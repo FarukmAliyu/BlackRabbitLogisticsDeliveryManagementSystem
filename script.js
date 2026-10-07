@@ -1,11 +1,3 @@
-/* =====================================================
-   BLACK RABBIT LOGISTICS
-   COMPLETE SINGLE SCRIPT
-===================================================== */
-
-/* =====================================================
-   SUPER ADMIN
-===================================================== */
 
 const SUPER_ADMIN = {
     phone: "08000000000",
@@ -16,11 +8,6 @@ const SUPER_ADMIN = {
     id: "SUPER-ADMIN"
 };
 
-
-/* =====================================================
-   GLOBAL STATE
-===================================================== */
-
 let currentRole = "rider";
 let editingDeliveryId = null;
 let deliveryFilter = "All";
@@ -30,9 +17,7 @@ let deliveryDonut = null;
 let deliveryBar = null;
 
 
-/* =====================================================
-   OFFICE GEO-FENCE / CHECK-IN
-===================================================== */
+
 
 const OFFICE_LATITUDE = 10.5366473;
 const OFFICE_LONGITUDE = 7.4682503;
@@ -41,10 +26,6 @@ const CHECK_IN_RADIUS_METERS = 200;
 
 const DAILY_CHECK_IN_FEE = 1000;
 
-
-/* =====================================================
-   AUTH HELPERS
-===================================================== */
 
 function selectRole(role) {
 
@@ -140,10 +121,6 @@ function showAuthMessage(id, message, type) {
 }
 
 
-/* =====================================================
-   PHONE
-===================================================== */
-
 function normalizePhone(phone) {
 
     let value = String(phone || "")
@@ -161,9 +138,6 @@ function normalizePhone(phone) {
 }
 
 
-/* =====================================================
-   RIDER REGISTRATION
-===================================================== */
 
 function showRegister() {
 
@@ -392,9 +366,6 @@ function registerRider() {
 }
 
 
-/* =====================================================
-   LOGIN
-===================================================== */
 
 function riderLogin() {
 
@@ -670,9 +641,7 @@ function logout() {
 }
 
 
-/* =====================================================
-   CURRENT USER
-===================================================== */
+
 
 function getCurrentUser() {
 
@@ -683,10 +652,6 @@ function getCurrentUser() {
     );
 }
 
-
-/* =====================================================
-   ATTENDANCE STORAGE
-===================================================== */
 
 function getAttendance() {
 
@@ -707,9 +672,7 @@ function saveAttendance(records) {
 }
 
 
-/* =====================================================
-   DATE / TIME HELPERS
-===================================================== */
+
 
 function getToday() {
 
@@ -846,9 +809,6 @@ function formatDuration(minutes) {
 }
 
 
-/* =====================================================
-   GPS DISTANCE
-===================================================== */
 
 function getDistanceInMeters(
     lat1,
@@ -893,9 +853,6 @@ function getDistanceInMeters(
 }
 
 
-/* =====================================================
-   RIDER CHECK-IN
-===================================================== */
 
 function riderCheckIn() {
 
@@ -1156,9 +1113,7 @@ function riderCheckIn() {
 }
 
 
-/* =====================================================
-   RIDER CHECK-OUT
-===================================================== */
+
 
 function riderCheckOut() {
 
@@ -1252,9 +1207,6 @@ function riderCheckOut() {
 }
 
 
-/* =====================================================
-   WEEKLY EARNINGS
-===================================================== */
 
 function getWeekStart(dateValue) {
 
@@ -1360,10 +1312,6 @@ function getDeliveryCompletionDate(delivery) {
     );
 }
 
-
-/* =====================================================
-   WEEKLY RIDER FINANCIALS
-===================================================== */
 
 function getRiderWeeklyFinancials(riderId) {
 
@@ -1484,10 +1432,6 @@ function getRiderWeeklyFinancials(riderId) {
     };
 }
 
-
-/* =====================================================
-   RIDER EARNINGS CARD
-===================================================== */
 
 function renderRiderEarningsCard() {
 
