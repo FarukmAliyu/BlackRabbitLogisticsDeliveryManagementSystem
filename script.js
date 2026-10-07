@@ -1,11 +1,11 @@
-/* =========================================================
+/* =====================================================
    BLACK RABBIT LOGISTICS
-   COMPLETE DELIVERY MANAGEMENT SYSTEM
-   ========================================================= */
+   COMPLETE SINGLE SCRIPT
+===================================================== */
 
-/* =========================================================
-   GLOBAL CONFIGURATION
-   ========================================================= */
+/* =====================================================
+   SUPER ADMIN
+===================================================== */
 
 const SUPER_ADMIN = {
     phone: "08000000000",
@@ -16,469 +16,492 @@ const SUPER_ADMIN = {
     id: "SUPER-ADMIN"
 };
 
-const OFFICE_LATITUDE = 10.5366473;
-const OFFICE_LONGITUDE = 7.4682503;
-const CHECK_IN_RADIUS_METERS = 200;
-const DAILY_CHECK_IN_FEE = 1000;
+
+/* =====================================================
+   GLOBAL STATE
+===================================================== */
 
 let currentRole = "rider";
 let editingDeliveryId = null;
 let deliveryFilter = "All";
 
+let deliveryLineChart = null;
 let deliveryDonut = null;
 let deliveryBar = null;
 
 
-/* =========================================================
-   BASIC HELPERS
-   ========================================================= */
+/* =====================================================
+   OFFICE GEO-FENCE / CHECK-IN
+===================================================== */
+
+const OFFICE_LATITUDE = 10.5366473;
+const OFFICE_LONGITUDE = 7.4682503;
+
+const CHECK_IN_RADIUS_METERS = 200;
+
+const DAILY_CHECK_IN_FEE = 1000;
+
+
+/* =====================================================
+   AUTH HELPERS
+===================================================== */
+
+function selectRole(role) {
+
+    currentRole = role;
+
+    const riderRoleBtn = document.getElementById("riderRoleBtn");
+    const adminRoleBtn = document.getElementById("adminRoleBtn");
+    const riderLoginForm = document.getElementById("riderLoginForm");
+    const adminLoginForm = document.getElementById("adminLoginForm");
+    const registerForm = document.getElementById("registerForm");
+
+    if (riderRoleBtn) {
+        riderRoleBtn.classList.toggle("active", role === "rider");
+    }
+
+    if (adminRoleBtn) {
+        adminRoleBtn.classList.toggle("active", role === "admin");
+    }
+
+    if (riderLoginForm) {
+        riderLoginForm.classList.toggle(
+            "hidden-auth",
+            role !== "rider"
+        );
+    }
+
+    if (adminLoginForm) {
+        adminLoginForm.classList.toggle(
+            "hidden-auth",
+            role !== "admin"
+        );
+    }
+
+    if (registerForm) {
+        registerForm.classList.add("hidden-auth");
+    }
+
+    clearMessages();
+}
+
+
+function clearMessages() {
+
+    document
+        .querySelectorAll(".auth-message")
+        .forEach(function (element) {
+
+            element.className = "auth-message";
+            element.textContent = "";
+
+        });
+
+}
+
+
+function togglePassword(id, button) {
+
+    const input = document.getElementById(id);
+
+    if (!input) {
+        return;
+    }
+
+    if (input.type === "password") {
+
+        input.type = "text";
+
+        button.textContent = "Hide";
+
+    } else {
+
+        input.type = "password";
+
+        button.textContent = "Show";
+
+    }
+
+}
+
+
+function showAuthMessage(id, message, type) {
+
+    const element = document.getElementById(id);
+
+    if (!element) {
+        return;
+    }
+
+    element.textContent = message;
+
+    element.className =
+        "auth-message show " + type;
+}
+
+
+/* =====================================================
+   PHONE
+===================================================== */
 
 function normalizePhone(phone) {
-    return String(phone || "")
-        .replace(/\s+/g, "")
-        .replace(/-/g, "")
-        .trim();
-}
 
-function escapeHtml(value) {
-    const div = document.createElement("div");
-    div.textContent = value ?? "";
-    return div.innerHTML;
-}
+    let value = String(phone || "")
+        .replace(/\D/g, "");
 
-function formatCurrency(amount) {
-    return `₦${Number(amount || 0).toLocaleString("en-NG")}`;
-}
+    if (value.startsWith("234")) {
 
-function getToday() {
-    const now = new Date();
+        value =
+            "0" +
+            value.substring(3);
 
-    const year = now.getFullYear();
-    const month = String(now.getMonth() + 1).padStart(2, "0");
-    const day = String(now.getDate()).padStart(2, "0");
-
-    return `${year}-${month}-${day}`;
-}
-
-function getCurrentTime() {
-    return new Date().toLocaleTimeString("en-NG", {
-        hour: "2-digit",
-        minute: "2-digit"
-    });
-}
-
-function getCurrentDateTime() {
-    return new Date().toISOString();
-}
-
-function formatDate(dateValue) {
-    if (!dateValue) return "-";
-
-    const date = new Date(dateValue);
-
-    if (Number.isNaN(date.getTime())) {
-        return dateValue;
     }
 
-    return date.toLocaleDateString("en-NG", {
-        day: "2-digit",
-        month: "short",
-        year: "numeric"
-    });
-}
-
-function formatDateTime(dateValue) {
-    if (!dateValue) return "-";
-
-    const date = new Date(dateValue);
-
-    if (Number.isNaN(date.getTime())) {
-        return dateValue;
-    }
-
-    return date.toLocaleString("en-NG", {
-        day: "2-digit",
-        month: "short",
-        year: "numeric",
-        hour: "2-digit",
-        minute: "2-digit"
-    });
-}
-
-function formatDuration(minutes) {
-    const totalMinutes = Number(minutes || 0);
-
-    if (totalMinutes <= 0) {
-        return "0 min";
-    }
-
-    const hours = Math.floor(totalMinutes / 60);
-    const mins = totalMinutes % 60;
-
-    if (hours > 0) {
-        return `${hours}h ${mins}m`;
-    }
-
-    return `${mins} min`;
+    return value;
 }
 
 
-/* =========================================================
-   LOCAL STORAGE
-   ========================================================= */
+/* =====================================================
+   RIDER REGISTRATION
+===================================================== */
+
+function showRegister() {
+
+    selectRole("rider");
+
+    const loginForm =
+        document.getElementById("riderLoginForm");
+
+    const registerForm =
+        document.getElementById("registerForm");
+
+    if (loginForm) {
+        loginForm.classList.add("hidden-auth");
+    }
+
+    if (registerForm) {
+        registerForm.classList.remove("hidden-auth");
+    }
+}
+
+
+function showLogin() {
+
+    const registerForm =
+        document.getElementById("registerForm");
+
+    const riderLoginForm =
+        document.getElementById("riderLoginForm");
+
+    const adminLoginForm =
+        document.getElementById("adminLoginForm");
+
+    if (registerForm) {
+        registerForm.classList.add("hidden-auth");
+    }
+
+    if (riderLoginForm) {
+        riderLoginForm.classList.remove("hidden-auth");
+    }
+
+    if (adminLoginForm) {
+        adminLoginForm.classList.add("hidden-auth");
+    }
+
+    const riderRoleBtn =
+        document.getElementById("riderRoleBtn");
+
+    const adminRoleBtn =
+        document.getElementById("adminRoleBtn");
+
+    if (riderRoleBtn) {
+        riderRoleBtn.classList.add("active");
+    }
+
+    if (adminRoleBtn) {
+        adminRoleBtn.classList.remove("active");
+    }
+
+    currentRole = "rider";
+
+    clearMessages();
+}
+
 
 function getRiders() {
-    try {
-        return JSON.parse(
-            localStorage.getItem("blackRabbitRiders") || "[]"
-        );
-    } catch (error) {
-        console.error("Unable to load riders:", error);
-        return [];
-    }
+
+    return JSON.parse(
+        localStorage.getItem(
+            "blackRabbitRiders"
+        ) || "[]"
+    );
 }
 
+
 function saveRiders(riders) {
+
     localStorage.setItem(
         "blackRabbitRiders",
         JSON.stringify(riders)
     );
 }
 
-function getDeliveries() {
-    try {
-        const deliveries = JSON.parse(
-            localStorage.getItem("blackRabbitDeliveries") || "[]"
-        );
-
-        return deliveries.map(delivery => ({
-            ...delivery,
-            riderEarning: Number(delivery.riderEarning || 0)
-        }));
-    } catch (error) {
-        console.error("Unable to load deliveries:", error);
-        return [];
-    }
-}
-
-function saveDeliveries(deliveries) {
-    localStorage.setItem(
-        "blackRabbitDeliveries",
-        JSON.stringify(deliveries)
-    );
-}
-
-function getAttendance() {
-    try {
-        return JSON.parse(
-            localStorage.getItem("blackRabbitAttendance") || "[]"
-        );
-    } catch (error) {
-        console.error("Unable to load attendance:", error);
-        return [];
-    }
-}
-
-function saveAttendance(attendance) {
-    localStorage.setItem(
-        "blackRabbitAttendance",
-        JSON.stringify(attendance)
-    );
-}
-
-
-/* =========================================================
-   DELIVERY INITIALIZATION
-   NO DEMO DATA
-   ========================================================= */
-
-function initializeDeliveries() {
-    const existing = localStorage.getItem("blackRabbitDeliveries");
-
-    /*
-     * IMPORTANT:
-     * Do NOT create demo/sample deliveries.
-     * Deliveries will only be created by actual users/admin.
-     */
-
-    if (!existing) {
-        localStorage.setItem(
-            "blackRabbitDeliveries",
-            JSON.stringify([])
-        );
-    }
-}
-
-
-/* =========================================================
-   CURRENT USER / SESSION
-   ========================================================= */
-
-function getCurrentUser() {
-    try {
-        return JSON.parse(
-            sessionStorage.getItem("blackRabbitCurrentUser") || "null"
-        );
-    } catch (error) {
-        return null;
-    }
-}
-
-function setCurrentUser(user) {
-    sessionStorage.setItem(
-        "blackRabbitCurrentUser",
-        JSON.stringify(user)
-    );
-}
-
-function isSuperAdmin() {
-    const user = getCurrentUser();
-    return user && user.role === "super_admin";
-}
-
-function isRider() {
-    const user = getCurrentUser();
-    return user && user.role === "rider";
-}
-
-
-/* =========================================================
-   AUTH UI
-   ========================================================= */
-
-function selectRole(role) {
-    currentRole = role;
-
-    const riderLoginBox = document.getElementById("riderLoginBox");
-    const adminLoginBox = document.getElementById("adminLoginBox");
-    const riderRegisterBox = document.getElementById("riderRegisterBox");
-
-    const riderTab = document.getElementById("riderRoleBtn");
-    const adminTab = document.getElementById("adminRoleBtn");
-
-    if (role === "rider") {
-        if (riderLoginBox) riderLoginBox.style.display = "block";
-        if (adminLoginBox) adminLoginBox.style.display = "none";
-        if (riderRegisterBox) riderRegisterBox.style.display = "block";
-
-        if (riderTab) riderTab.classList.add("active");
-        if (adminTab) adminTab.classList.remove("active");
-    } else {
-        if (riderLoginBox) riderLoginBox.style.display = "none";
-        if (adminLoginBox) adminLoginBox.style.display = "block";
-        if (riderRegisterBox) riderRegisterBox.style.display = "none";
-
-        if (riderTab) riderTab.classList.remove("active");
-        if (adminTab) adminTab.classList.add("active");
-    }
-}
-
-function togglePassword(inputId, button) {
-    const input = document.getElementById(inputId);
-
-    if (!input) return;
-
-    if (input.type === "password") {
-        input.type = "text";
-
-        if (button) {
-            button.textContent = "Hide";
-        }
-    } else {
-        input.type = "password";
-
-        if (button) {
-            button.textContent = "Show";
-        }
-    }
-}
-
-function showAuthMessage(message, type = "error") {
-    const element = document.getElementById("authMessage");
-
-    if (!element) {
-        alert(message);
-        return;
-    }
-
-    element.textContent = message;
-    element.className = `auth-message ${type}`;
-}
-
-
-/* =========================================================
-   RIDER REGISTRATION
-   ========================================================= */
 
 function registerRider() {
-    const firstName = document.getElementById("registerFirstName")?.value.trim();
-    const lastName = document.getElementById("registerLastName")?.value.trim();
-    const phone = normalizePhone(
-        document.getElementById("registerPhone")?.value
-    );
-    const password = document.getElementById("registerPassword")?.value;
-    const terms = document.getElementById("registerTerms");
 
-    if (!firstName || !lastName || !phone || !password) {
+    const firstName =
+        document.getElementById("regFirstName")?.value.trim();
+
+    const lastName =
+        document.getElementById("regLastName")?.value.trim();
+
+    const phone =
+        normalizePhone(
+            document.getElementById("regPhone")?.value
+        );
+
+    const password =
+        document.getElementById("regPassword")?.value;
+
+    const terms =
+        document.getElementById("regTerms")?.checked;
+
+
+    if (
+        !firstName ||
+        !lastName ||
+        !phone ||
+        !password
+    ) {
+
         showAuthMessage(
-            "Please complete all registration fields.",
+            "registerMessage",
+            "Please complete all required fields.",
             "error"
         );
+
         return;
     }
 
-    if (password.length < 6) {
+
+    if (phone.length !== 11) {
+
         showAuthMessage(
+            "registerMessage",
+            "Please enter a valid Nigerian phone number.",
+            "error"
+        );
+
+        return;
+    }
+
+
+    if (password.length < 6) {
+
+        showAuthMessage(
+            "registerMessage",
             "Password must contain at least 6 characters.",
             "error"
         );
+
         return;
     }
 
-    if (terms && !terms.checked) {
+
+    if (!terms) {
+
         showAuthMessage(
-            "Please accept the terms and conditions.",
+            "registerMessage",
+            "Please agree to the rider terms and conditions.",
             "error"
         );
+
         return;
     }
 
-    const riders = getRiders();
 
-    const existing = riders.find(
-        rider => normalizePhone(rider.phone) === phone
-    );
+    const existing = getRiders();
 
-    if (existing) {
+    const phoneExists =
+        existing.some(function (rider) {
+
+            return normalizePhone(rider.phone) === phone;
+
+        });
+
+
+    if (phoneExists) {
+
         showAuthMessage(
-            "A rider account with this phone number already exists.",
+            "registerMessage",
+            "A rider with this phone number already exists.",
             "error"
         );
+
         return;
     }
 
-    const riderNumber = String(riders.length + 1).padStart(4, "0");
 
     const rider = {
-        id: `BR-RDR-${riderNumber}`,
+
+        id:
+            "BR-RDR-" +
+            String(existing.length + 1).padStart(4, "0"),
+
         firstName,
         lastName,
         phone,
         password,
+
         role: "rider",
-        createdAt: getCurrentDateTime()
+
+        createdAt:
+            new Date().toISOString()
+
     };
 
-    riders.push(rider);
-    saveRiders(riders);
+
+    existing.push(rider);
+
+    saveRiders(existing);
+
 
     showAuthMessage(
-        `Registration successful. Your Rider ID is ${rider.id}.`,
+        "registerMessage",
+
+        "Registration successful! Your Rider ID is " +
+        rider.id +
+        ". You can now login.",
+
         "success"
     );
 
-    const registerForm = document.getElementById("registerForm");
 
-    if (registerForm) {
-        registerForm.reset();
-    }
+    setTimeout(function () {
+
+        showLogin();
+
+        const loginPhone =
+            document.getElementById("loginPhone");
+
+        if (loginPhone) {
+            loginPhone.value = phone;
+        }
+
+    }, 1500);
 }
 
 
-/* =========================================================
-   RIDER LOGIN
-   ========================================================= */
+/* =====================================================
+   LOGIN
+===================================================== */
 
 function riderLogin() {
-    const phone = normalizePhone(
-        document.getElementById("loginPhone")?.value
-    );
+
+    const phone =
+        normalizePhone(
+            document.getElementById("loginPhone")?.value
+        );
 
     const password =
-        document.getElementById("loginPassword")?.value || "";
-
-    if (!phone || !password) {
-        showAuthMessage(
-            "Enter your phone number and password.",
-            "error"
-        );
-        return;
-    }
+        document.getElementById("loginPassword")?.value;
 
     const riders = getRiders();
 
-    const rider = riders.find(
-        item =>
-            normalizePhone(item.phone) === phone &&
-            item.password === password
-    );
+    const rider =
+        riders.find(function (user) {
+
+            return (
+                normalizePhone(user.phone) === phone &&
+                user.password === password
+            );
+
+        });
+
 
     if (!rider) {
+
         showAuthMessage(
+            "loginMessage",
             "Invalid rider phone number or password.",
             "error"
         );
+
         return;
     }
+
 
     loginSuccess(rider);
 }
 
 
-/* =========================================================
-   SUPER ADMIN LOGIN
-   ========================================================= */
-
 function adminLogin() {
-    const phone = normalizePhone(
-        document.getElementById("adminPhone")?.value
-    );
+
+    const phone =
+        normalizePhone(
+            document.getElementById("adminPhone")?.value
+        );
 
     const password =
-        document.getElementById("adminPassword")?.value || "";
+        document.getElementById("adminPassword")?.value;
+
 
     if (
-        phone === normalizePhone(SUPER_ADMIN.phone) &&
-        password === SUPER_ADMIN.password
+        phone !== SUPER_ADMIN.phone ||
+        password !== SUPER_ADMIN.password
     ) {
-        loginSuccess(SUPER_ADMIN);
+
+        showAuthMessage(
+            "adminMessage",
+            "Invalid Super Admin credentials.",
+            "error"
+        );
+
         return;
     }
 
-    showAuthMessage(
-        "Invalid Super Admin credentials.",
-        "error"
-    );
+
+    loginSuccess(SUPER_ADMIN);
 }
 
 
-/* =========================================================
+/* =====================================================
    LOGIN SUCCESS
-   ========================================================= */
+===================================================== */
 
 function loginSuccess(user) {
-    setCurrentUser(user);
 
     sessionStorage.setItem(
         "blackRabbitLoggedIn",
         "true"
     );
 
-    const authScreen = document.getElementById("authScreen");
-    const mainApp = document.getElementById("mainApp");
+    sessionStorage.setItem(
+        "blackRabbitCurrentUser",
+        JSON.stringify(user)
+    );
+
+
+    const authScreen =
+        document.getElementById("authScreen");
+
+    const mainApp =
+        document.getElementById("mainApp");
 
     if (authScreen) {
         authScreen.style.display = "none";
     }
 
     if (mainApp) {
-        mainApp.style.display = "block";
+        mainApp.style.display = "flex";
     }
 
-    updateUserInterface();
-    configureRoleInterface();
+
+    updateUserInformation(user);
+    configureRoleInterface(user);
 
     refreshAllDeliveryViews();
+
     renderRiderAttendanceCard();
     renderRiderEarningsCard();
 
@@ -486,16 +509,138 @@ function loginSuccess(user) {
 }
 
 
-/* =========================================================
-   LOGOUT
-   ========================================================= */
+/* =====================================================
+   USER INFORMATION
+===================================================== */
+
+function updateUserInformation(user) {
+
+    const first =
+        user.firstName || "User";
+
+    const last =
+        user.lastName || "";
+
+
+    const initials =
+        (
+            first.charAt(0) +
+            last.charAt(0)
+        ).toUpperCase();
+
+
+    const sidebarAvatar =
+        document.getElementById("sidebarAvatar");
+
+    const headerAvatar =
+        document.getElementById("headerAvatar");
+
+    if (sidebarAvatar) {
+        sidebarAvatar.textContent =
+            initials || "U";
+    }
+
+    if (headerAvatar) {
+        headerAvatar.textContent =
+            initials || "U";
+    }
+
+
+    const roleText =
+        user.role === "super_admin"
+            ? "Super Admin"
+            : "Rider";
+
+
+    const sidebarUser =
+        document.getElementById("sidebarUser");
+
+    if (sidebarUser) {
+
+        sidebarUser.innerHTML =
+            escapeHtml(first) +
+            " " +
+            escapeHtml(last) +
+            "<small>" +
+            roleText +
+            "</small>";
+
+    }
+
+
+    const sub =
+        document.getElementById("sub");
+
+    if (sub) {
+
+        sub.textContent =
+            "Welcome back, " +
+            first +
+            ". Here's what's happening today.";
+
+    }
+}
+
+
+function configureRoleInterface(user) {
+
+    const adminOnlyPages = [
+        "customers",
+        "drivers",
+        "analytics"
+    ];
+
+
+    adminOnlyPages.forEach(function (pageName) {
+
+        const button =
+            document.querySelector(
+                `[data-page="${pageName}"]`
+            );
+
+        if (button) {
+
+            button.style.display =
+                user.role === "rider"
+                    ? "none"
+                    : "";
+
+        }
+
+    });
+}
+
+
+function forgotPassword(event) {
+
+    if (event) {
+        event.preventDefault();
+    }
+
+    showAuthMessage(
+        "loginMessage",
+        "Password recovery will be connected to the backend later.",
+        "success"
+    );
+}
+
 
 function logout() {
-    sessionStorage.removeItem("blackRabbitLoggedIn");
-    sessionStorage.removeItem("blackRabbitCurrentUser");
 
-    const authScreen = document.getElementById("authScreen");
-    const mainApp = document.getElementById("mainApp");
+    sessionStorage.removeItem(
+        "blackRabbitLoggedIn"
+    );
+
+    sessionStorage.removeItem(
+        "blackRabbitCurrentUser"
+    );
+
+
+    const mainApp =
+        document.getElementById("mainApp");
+
+    const authScreen =
+        document.getElementById("authScreen");
 
     if (mainApp) {
         mainApp.style.display = "none";
@@ -505,122 +650,205 @@ function logout() {
         authScreen.style.display = "flex";
     }
 
-    currentRole = "rider";
 
-    selectRole("rider");
-}
+    const loginPhone =
+        document.getElementById("loginPhone");
 
+    const loginPassword =
+        document.getElementById("loginPassword");
 
-/* =========================================================
-   USER INTERFACE
-   ========================================================= */
-
-function updateUserInterface() {
-    const user = getCurrentUser();
-
-    if (!user) return;
-
-    const name =
-        user.role === "super_admin"
-            ? "Super Admin"
-            : `${user.firstName || ""} ${user.lastName || ""}`.trim();
-
-    const userNameElements = document.querySelectorAll(
-        "#userName, #headerUserName, .user-name"
-    );
-
-    userNameElements.forEach(element => {
-        element.textContent = name;
-    });
-
-    const avatarElements = document.querySelectorAll(
-        "#userAvatar, .user-avatar"
-    );
-
-    avatarElements.forEach(element => {
-        element.textContent =
-            name.charAt(0).toUpperCase() || "U";
-    });
-
-    const title = document.getElementById("pageTitle");
-
-    if (title) {
-        title.textContent =
-            user.role === "super_admin"
-                ? "Super Admin Dashboard"
-                : "Rider Dashboard";
+    if (loginPhone) {
+        loginPhone.value = "";
     }
+
+    if (loginPassword) {
+        loginPassword.value = "";
+    }
+
+
+    showLogin();
 }
 
 
-/* =========================================================
-   ROLE-BASED INTERFACE
-   ========================================================= */
+/* =====================================================
+   CURRENT USER
+===================================================== */
 
-function configureRoleInterface() {
-    const adminOnlyPages = [
-        "customers",
-        "drivers",
-        "analytics"
-    ];
+function getCurrentUser() {
 
-    adminOnlyPages.forEach(page => {
-        const nav = document.querySelector(
-            `[data-page="${page}"]`
-        );
+    return JSON.parse(
+        sessionStorage.getItem(
+            "blackRabbitCurrentUser"
+        ) || "null"
+    );
+}
 
-        if (nav) {
-            nav.style.display = isSuperAdmin()
-                ? ""
-                : "none";
+
+/* =====================================================
+   ATTENDANCE STORAGE
+===================================================== */
+
+function getAttendance() {
+
+    return JSON.parse(
+        localStorage.getItem(
+            "blackRabbitAttendance"
+        ) || "[]"
+    );
+}
+
+
+function saveAttendance(records) {
+
+    localStorage.setItem(
+        "blackRabbitAttendance",
+        JSON.stringify(records)
+    );
+}
+
+
+/* =====================================================
+   DATE / TIME HELPERS
+===================================================== */
+
+function getToday() {
+
+    const now = new Date();
+
+    return (
+        now.getFullYear() +
+        "-" +
+        String(now.getMonth() + 1).padStart(2, "0") +
+        "-" +
+        String(now.getDate()).padStart(2, "0")
+    );
+}
+
+
+function getCurrentTime() {
+
+    return new Date().toLocaleTimeString(
+        "en-NG",
+        {
+            hour: "2-digit",
+            minute: "2-digit",
+            hour12: true
         }
-    });
-
-    const attendanceNav = document.querySelector(
-        '[data-page="attendance"]'
     );
-
-    if (attendanceNav) {
-        attendanceNav.style.display = "";
-    }
-
-    const deliveryNav = document.querySelector(
-        '[data-page="deliveries"]'
-    );
-
-    if (deliveryNav) {
-        deliveryNav.style.display = "";
-    }
-
-    const trackingNav = document.querySelector(
-        '[data-page="tracking"]'
-    );
-
-    if (trackingNav) {
-        trackingNav.style.display = "";
-    }
 }
 
 
-/* =========================================================
-   ATTENDANCE HELPERS
-   ========================================================= */
+function getCurrentTimestamp() {
+
+    return new Date().toISOString();
+}
+
 
 function getRiderTodayAttendance() {
+
     const user = getCurrentUser();
 
-    if (!user || user.role !== "rider") {
+    if (
+        !user ||
+        user.role !== "rider"
+    ) {
         return null;
     }
 
-    const today = getToday();
+    const records = getAttendance();
 
-    return getAttendance().find(
-        record =>
+    return records.find(function (record) {
+
+        return (
             record.riderId === user.id &&
-            record.date === today
-    ) || null;
+            record.date === getToday()
+        );
+
+    }) || null;
 }
+
+
+/* =====================================================
+   ATTENDANCE DURATION
+===================================================== */
+
+function calculateDurationMinutes(
+    checkInTimestamp,
+    checkOutTimestamp
+) {
+
+    if (
+        !checkInTimestamp ||
+        !checkOutTimestamp
+    ) {
+        return 0;
+    }
+
+
+    const start =
+        new Date(checkInTimestamp);
+
+    const end =
+        new Date(checkOutTimestamp);
+
+
+    if (
+        Number.isNaN(start.getTime()) ||
+        Number.isNaN(end.getTime())
+    ) {
+        return 0;
+    }
+
+
+    return Math.max(
+        0,
+        Math.round(
+            (end.getTime() - start.getTime()) /
+            60000
+        )
+    );
+}
+
+
+function formatDuration(minutes) {
+
+    const value =
+        Number(minutes || 0);
+
+    if (value <= 0) {
+        return "-";
+    }
+
+
+    const hours =
+        Math.floor(value / 60);
+
+    const mins =
+        value % 60;
+
+
+    if (hours === 0) {
+        return mins + " min";
+    }
+
+
+    if (mins === 0) {
+        return hours + " hr";
+    }
+
+
+    return (
+        hours +
+        " hr " +
+        mins +
+        " min"
+    );
+}
+
+
+/* =====================================================
+   GPS DISTANCE
+===================================================== */
 
 function getDistanceInMeters(
     lat1,
@@ -628,21 +856,30 @@ function getDistanceInMeters(
     lat2,
     lon2
 ) {
+
     const earthRadius = 6371000;
 
-    const toRadians = value =>
-        value * Math.PI / 180;
+    const toRadians = function (value) {
+        return value * Math.PI / 180;
+    };
 
-    const dLat = toRadians(lat2 - lat1);
-    const dLon = toRadians(lon2 - lon1);
+    const dLat =
+        toRadians(lat2 - lat1);
+
+    const dLon =
+        toRadians(lon2 - lon1);
+
 
     const a =
         Math.sin(dLat / 2) *
         Math.sin(dLat / 2) +
+
         Math.cos(toRadians(lat1)) *
         Math.cos(toRadians(lat2)) *
+
         Math.sin(dLon / 2) *
         Math.sin(dLon / 2);
+
 
     const c =
         2 *
@@ -651,78 +888,88 @@ function getDistanceInMeters(
             Math.sqrt(1 - a)
         );
 
+
     return earthRadius * c;
 }
 
-function calculateAttendanceDuration(record) {
-    if (!record || !record.checkInTimestamp) {
-        return 0;
-    }
 
-    const start = new Date(
-        record.checkInTimestamp
-    ).getTime();
-
-    let end;
-
-    if (record.checkOutTimestamp) {
-        end = new Date(
-            record.checkOutTimestamp
-        ).getTime();
-    } else {
-        end = Date.now();
-    }
-
-    if (!Number.isFinite(start) || !Number.isFinite(end)) {
-        return 0;
-    }
-
-    return Math.max(
-        0,
-        Math.floor((end - start) / 60000)
-    );
-}
-
-
-/* =========================================================
+/* =====================================================
    RIDER CHECK-IN
-   ========================================================= */
+===================================================== */
 
 function riderCheckIn() {
+
     const user = getCurrentUser();
 
-    if (!user || user.role !== "rider") {
-        alert("Only riders can check in.");
+
+    if (
+        !user ||
+        user.role !== "rider"
+    ) {
+
+        alert(
+            "Only riders can check in."
+        );
+
         return;
     }
 
-    const todayAttendance =
-        getRiderTodayAttendance();
 
-    if (todayAttendance) {
+    const records = getAttendance();
+
+    const today = getToday();
+
+
+    const existing =
+        records.find(function (record) {
+
+            return (
+                record.riderId === user.id &&
+                record.date === today
+            );
+
+        });
+
+
+    if (existing) {
+
         alert(
             "You have already checked in today."
         );
+
         return;
     }
+
 
     if (!navigator.geolocation) {
+
         alert(
-            "GPS is not available in this browser."
+            "Location services are not available on this device. Please enable GPS/location services."
         );
+
         return;
     }
 
+
     const button =
-        document.getElementById("checkInBtn");
+        document.querySelector(
+            "#riderAttendanceCard .attendance-btn"
+        );
+
 
     if (button) {
+
         button.disabled = true;
-        button.textContent = "Checking location...";
+        button.textContent =
+            "Checking location...";
+
     }
 
+
     navigator.geolocation.getCurrentPosition(
-        position => {
+
+        function (position) {
+
             const latitude =
                 position.coords.latitude;
 
@@ -732,338 +979,331 @@ function riderCheckIn() {
             const accuracy =
                 position.coords.accuracy;
 
+
             const distance =
                 getDistanceInMeters(
-                    OFFICE_LATITUDE,
-                    OFFICE_LONGITUDE,
                     latitude,
-                    longitude
+                    longitude,
+                    OFFICE_LATITUDE,
+                    OFFICE_LONGITUDE
                 );
 
-            if (distance > CHECK_IN_RADIUS_METERS) {
+
+            if (
+                distance >
+                CHECK_IN_RADIUS_METERS
+            ) {
+
                 if (button) {
+
                     button.disabled = false;
-                    button.textContent = "Check In";
+
+                    button.textContent =
+                        "✓ Check In";
+
                 }
 
+
                 alert(
-                    `Check-in denied.\n\nYou are approximately ${Math.round(distance)} meters from the office.\n\nYou must be within ${CHECK_IN_RADIUS_METERS} meters of the office.`
+                    "Check-in denied.\n\n" +
+                    "You are approximately " +
+                    Math.round(distance) +
+                    " meters from the office.\n\n" +
+                    "You must be within " +
+                    CHECK_IN_RADIUS_METERS +
+                    " meters of the office."
                 );
 
                 return;
             }
 
-            const now = new Date();
 
-            const attendance = getAttendance();
+            const timestamp =
+                getCurrentTimestamp();
 
-            const record = {
-                id: `ATT-${Date.now()}`,
-                riderId: user.id,
+
+            const attendance = {
+
+                id:
+                    "ATT-" +
+                    Date.now(),
+
+                riderId:
+                    user.id,
+
                 riderName:
-                    `${user.firstName || ""} ${user.lastName || ""}`.trim(),
-                phone: user.phone,
+                    user.firstName +
+                    " " +
+                    user.lastName,
 
-                date: getToday(),
+                phone:
+                    user.phone,
 
-                checkIn: getCurrentTime(),
-                checkOut: "",
+                date:
+                    today,
+
+                checkIn:
+                    getCurrentTime(),
 
                 checkInTimestamp:
-                    now.toISOString(),
+                    timestamp,
 
-                checkOutTimestamp: "",
+                checkOut:
+                    "",
 
-                durationMinutes: 0,
+                checkOutTimestamp:
+                    "",
 
-                status: "Present",
+                durationMinutes:
+                    0,
 
-                checkInFee: DAILY_CHECK_IN_FEE,
-                feeApplied: true,
+                status:
+                    "Present",
 
-                latitude,
-                longitude,
+                checkInFee:
+                    DAILY_CHECK_IN_FEE,
 
-                locationAccuracy: accuracy,
-                distanceFromOffice: Math.round(distance),
+                feeApplied:
+                    true,
 
-                createdAt:
-                    now.toISOString()
+                latitude:
+                    latitude,
+
+                longitude:
+                    longitude,
+
+                locationAccuracy:
+                    Math.round(accuracy),
+
+                distanceFromOffice:
+                    Math.round(distance)
+
             };
 
-            attendance.push(record);
-            saveAttendance(attendance);
 
-            if (button) {
-                button.disabled = false;
-            }
+            records.push(attendance);
+
+            saveAttendance(records);
+
 
             renderRiderAttendanceCard();
-            renderAttendancePage();
             renderRiderEarningsCard();
+            renderAttendancePage();
+
 
             alert(
-                `Check-in successful.\n\nDistance from office: ${Math.round(distance)} meters.\nDaily attendance fee: ${formatCurrency(DAILY_CHECK_IN_FEE)}`
+                "Check-in successful at " +
+                attendance.checkIn +
+                ".\n\n" +
+                "Distance from office: " +
+                Math.round(distance) +
+                " meters.\n\n" +
+                "Daily check-in fee: ₦" +
+                formatMoney(
+                    DAILY_CHECK_IN_FEE
+                )
             );
+
         },
 
-        error => {
+
+        function (error) {
+
             if (button) {
+
                 button.disabled = false;
-                button.textContent = "Check In";
+
+                button.textContent =
+                    "✓ Check In";
+
             }
+
 
             let message =
-                "Unable to get your location.";
+                "Unable to verify your location.";
+
 
             if (error.code === 1) {
+
                 message =
-                    "Location permission was denied. Please allow location access and try again.";
+                    "Location permission was denied. Please allow location access for this website and try again.";
+
             } else if (error.code === 2) {
+
                 message =
-                    "Your location could not be determined. Please enable GPS/location services.";
+                    "Your location could not be determined. Make sure GPS/location services are enabled.";
+
             } else if (error.code === 3) {
+
                 message =
-                    "Location request timed out. Please try again.";
+                    "Location request timed out. Move to an area with better GPS/network reception and try again.";
+
             }
 
+
             alert(message);
+
         },
+
 
         {
             enableHighAccuracy: true,
             timeout: 15000,
             maximumAge: 0
         }
+
     );
 }
 
 
-/* =========================================================
+/* =====================================================
    RIDER CHECK-OUT
-   ========================================================= */
+===================================================== */
 
 function riderCheckOut() {
+
     const user = getCurrentUser();
 
-    if (!user || user.role !== "rider") {
-        alert("Only riders can check out.");
+
+    if (
+        !user ||
+        user.role !== "rider"
+    ) {
+
+        alert(
+            "Only riders can check out."
+        );
+
         return;
     }
 
-    const attendance =
-        getAttendance();
 
-    const index =
-        attendance.findIndex(
-            record =>
+    const records = getAttendance();
+
+
+    const attendance =
+        records.find(function (record) {
+
+            return (
                 record.riderId === user.id &&
                 record.date === getToday()
-        );
+            );
 
-    if (index === -1) {
+        });
+
+
+    if (!attendance) {
+
         alert(
             "You must check in before checking out."
         );
+
         return;
     }
 
-    if (attendance[index].checkOut) {
+
+    if (attendance.checkOut) {
+
         alert(
             "You have already checked out today."
         );
+
         return;
     }
 
-    const now = new Date();
 
-    attendance[index].checkOut =
-        now.toLocaleTimeString("en-NG", {
-            hour: "2-digit",
-            minute: "2-digit"
-        });
+    const checkoutTimestamp =
+        getCurrentTimestamp();
 
-    attendance[index].checkOutTimestamp =
-        now.toISOString();
 
-    attendance[index].status =
+    attendance.checkOut =
+        getCurrentTime();
+
+    attendance.checkOutTimestamp =
+        checkoutTimestamp;
+
+    attendance.durationMinutes =
+        calculateDurationMinutes(
+            attendance.checkInTimestamp,
+            checkoutTimestamp
+        );
+
+    attendance.status =
         "Checked Out";
 
-    attendance[index].durationMinutes =
-        calculateAttendanceDuration(
-            attendance[index]
-        );
 
-    saveAttendance(attendance);
+    saveAttendance(records);
+
 
     renderRiderAttendanceCard();
-    renderAttendancePage();
     renderRiderEarningsCard();
+    renderAttendancePage();
+
 
     alert(
-        `Check-out successful.\n\nAttendance duration: ${formatDuration(attendance[index].durationMinutes)}`
+        "Check-out successful at " +
+        attendance.checkOut +
+        ".\n\n" +
+        "Attendance duration: " +
+        formatDuration(
+            attendance.durationMinutes
+        )
     );
 }
 
 
-/* =========================================================
-   RIDER ATTENDANCE CARD
-   ========================================================= */
+/* =====================================================
+   WEEKLY EARNINGS
+===================================================== */
 
-function renderRiderAttendanceCard() {
-    const container =
-        document.getElementById(
-            "riderAttendanceCard"
+function getWeekStart(dateValue) {
+
+    const date =
+        new Date(
+            dateValue || new Date()
         );
 
-    if (!container) return;
-
-    if (!isRider()) {
-        container.innerHTML = "";
-        return;
-    }
-
-    const attendance =
-        getRiderTodayAttendance();
-
-    if (!attendance) {
-        container.innerHTML = `
-            <div class="attendance-card-content">
-                <h3>Today's Attendance</h3>
-
-                <p class="attendance-status">
-                    Not Checked In
-                </p>
-
-                <p>
-                    You must be within
-                    <strong>${CHECK_IN_RADIUS_METERS} meters</strong>
-                    of the office to check in.
-                </p>
-
-                <p>
-                    Daily attendance fee:
-                    <strong>${formatCurrency(DAILY_CHECK_IN_FEE)}</strong>
-                </p>
-
-                <button
-                    id="checkInBtn"
-                    class="btn btn-primary"
-                    onclick="riderCheckIn()"
-                >
-                    Check In
-                </button>
-            </div>
-        `;
-
-        return;
-    }
-
-    const duration =
-        calculateAttendanceDuration(attendance);
-
-    const checkedOut =
-        Boolean(attendance.checkOut);
-
-    container.innerHTML = `
-        <div class="attendance-card-content">
-            <h3>Today's Attendance</h3>
-
-            <p>
-                <strong>Date:</strong>
-                ${escapeHtml(attendance.date)}
-            </p>
-
-            <p>
-                <strong>Check In:</strong>
-                ${escapeHtml(attendance.checkIn)}
-            </p>
-
-            <p>
-                <strong>Check Out:</strong>
-                ${attendance.checkOut
-                    ? escapeHtml(attendance.checkOut)
-                    : "Not Checked Out"}
-            </p>
-
-            <p>
-                <strong>Duration:</strong>
-                ${formatDuration(duration)}
-            </p>
-
-            <p>
-                <strong>Status:</strong>
-                ${escapeHtml(attendance.status)}
-            </p>
-
-            <p>
-                <strong>Attendance Fee:</strong>
-                ${formatCurrency(attendance.checkInFee)}
-            </p>
-
-            <p>
-                <strong>Distance:</strong>
-                ${Number(attendance.distanceFromOffice || 0)} meters
-            </p>
-
-            ${
-                !checkedOut
-                    ? `
-                        <button
-                            class="btn btn-secondary"
-                            onclick="riderCheckOut()"
-                        >
-                            Check Out
-                        </button>
-                    `
-                    : `
-                        <p class="attendance-complete">
-                            Attendance completed for today.
-                        </p>
-                    `
-            }
-        </div>
-    `;
-}
-
-
-/* =========================================================
-   WEEK CALCULATIONS
-   ========================================================= */
-
-function getWeekStart(dateValue = new Date()) {
-    const date = new Date(dateValue);
-
-    if (Number.isNaN(date.getTime())) {
-        return null;
-    }
-
-    const day = date.getDay();
-
-    const difference =
-        day === 0 ? -6 : 1 - day;
-
-    const start = new Date(date);
-
-    start.setDate(
-        date.getDate() + difference
+    date.setHours(
+        0,
+        0,
+        0,
+        0
     );
 
-    start.setHours(0, 0, 0, 0);
 
-    return start;
+    const day =
+        date.getDay();
+
+
+    const diff =
+        day === 0
+            ? -6
+            : 1 - day;
+
+
+    date.setDate(
+        date.getDate() + diff
+    );
+
+
+    return date;
 }
 
-function getWeekEnd(dateValue = new Date()) {
-    const start = getWeekStart(dateValue);
 
-    if (!start) return null;
+function getWeekEnd(dateValue) {
 
-    const end = new Date(start);
+    const start =
+        getWeekStart(dateValue);
+
+
+    const end =
+        new Date(start);
+
 
     end.setDate(
-        start.getDate() + 6
+        end.getDate() + 6
     );
+
 
     end.setHours(
         23,
@@ -1072,391 +1312,1018 @@ function getWeekEnd(dateValue = new Date()) {
         999
     );
 
+
     return end;
 }
 
-function getWeekLabel(dateValue = new Date()) {
+
+function getWeekLabel() {
+
     const start =
-        getWeekStart(dateValue);
+        getWeekStart();
 
     const end =
-        getWeekEnd(dateValue);
+        getWeekEnd();
 
-    if (!start || !end) {
-        return "";
-    }
 
-    return `${start.toLocaleDateString(
-        "en-NG",
-        {
-            day: "2-digit",
-            month: "short"
-        }
-    )} - ${end.toLocaleDateString(
-        "en-NG",
-        {
-            day: "2-digit",
-            month: "short",
-            year: "numeric"
-        }
-    )}`;
+    return (
+        start.toLocaleDateString(
+            "en-NG",
+            {
+                day: "numeric",
+                month: "short"
+            }
+        ) +
+        " - " +
+        end.toLocaleDateString(
+            "en-NG",
+            {
+                day: "numeric",
+                month: "short",
+                year: "numeric"
+            }
+        )
+    );
 }
 
 
-/* =========================================================
+/* =====================================================
+   DELIVERY DATE FOR WEEKLY EARNINGS
+===================================================== */
+
+function getDeliveryCompletionDate(delivery) {
+
+    return new Date(
+        delivery.deliveredAt ||
+        delivery.updatedAt ||
+        delivery.createdAt
+    );
+}
+
+
+/* =====================================================
    WEEKLY RIDER FINANCIALS
-   ========================================================= */
+===================================================== */
 
 function getRiderWeeklyFinancials(riderId) {
+
     const start =
-        getWeekStart(new Date());
+        getWeekStart();
 
     const end =
-        getWeekEnd(new Date());
+        getWeekEnd();
+
 
     const deliveries =
-        getDeliveries();
+        getDeliveries().filter(
+            function (delivery) {
 
-    const attendance =
-        getAttendance();
+                if (
+                    delivery.riderId !== riderId ||
+                    delivery.status !== "Delivered"
+                ) {
 
-    const riderDeliveries =
-        deliveries.filter(delivery => {
-            if (
-                delivery.riderId !== riderId ||
-                delivery.status !== "Delivered"
-            ) {
-                return false;
-            }
+                    return false;
+                }
 
-            const deliveryDate =
-                delivery.deliveredAt ||
-                delivery.updatedAt ||
-                delivery.createdAt;
 
-            if (!deliveryDate) {
-                return false;
-            }
+                const date =
+                    getDeliveryCompletionDate(
+                        delivery
+                    );
 
-            const date =
-                new Date(deliveryDate);
 
-            return (
-                date >= start &&
-                date <= end
-            );
-        });
-
-    const grossEarnings =
-        riderDeliveries.reduce(
-            (total, delivery) =>
-                total +
-                Number(
-                    delivery.riderEarning || 0
-                ),
-            0
-        );
-
-    const riderAttendance =
-        attendance.filter(record => {
-            if (
-                record.riderId !== riderId
-            ) {
-                return false;
-            }
-
-            const date =
-                new Date(
-                    `${record.date}T00:00:00`
+                return (
+                    date >= start &&
+                    date <= end
                 );
 
-            return (
-                date >= start &&
-                date <= end &&
-                record.feeApplied !== false
-            );
-        });
+            }
+        );
 
-    const checkInFees =
-        riderAttendance.reduce(
-            (total, record) =>
-                total +
-                Number(
-                    record.checkInFee ||
-                    DAILY_CHECK_IN_FEE
-                ),
+
+    const grossEarnings =
+        deliveries.reduce(
+            function (total, delivery) {
+
+                return (
+                    total +
+                    Number(
+                        delivery.riderEarning || 0
+                    )
+                );
+
+            },
             0
         );
 
-    const netEarnings =
-        grossEarnings -
-        checkInFees;
+
+    const attendance =
+        getAttendance().filter(
+            function (record) {
+
+                if (
+                    record.riderId !== riderId ||
+                    !record.date
+                ) {
+
+                    return false;
+                }
+
+
+                const date =
+                    new Date(
+                        record.date +
+                        "T00:00:00"
+                    );
+
+
+                return (
+                    date >= start &&
+                    date <= end &&
+                    record.feeApplied !== false
+                );
+
+            }
+        );
+
+
+    const checkInFees =
+        attendance.reduce(
+            function (total, record) {
+
+                return (
+                    total +
+                    Number(
+                        record.checkInFee ||
+                        DAILY_CHECK_IN_FEE
+                    )
+                );
+
+            },
+            0
+        );
+
 
     return {
+
         grossEarnings,
+
         checkInFees,
-        netEarnings,
+
+        netEarnings:
+            grossEarnings -
+            checkInFees,
+
         deliveryCount:
-            riderDeliveries.length,
+            deliveries.length,
+
         checkInCount:
-            riderAttendance.length
+            attendance.length
+
     };
 }
 
 
-/* =========================================================
+/* =====================================================
    RIDER EARNINGS CARD
-   ========================================================= */
+===================================================== */
 
 function renderRiderEarningsCard() {
+
     const container =
         document.getElementById(
             "riderEarningsCard"
         );
 
-    if (!container) return;
 
-    if (!isRider()) {
-        container.innerHTML = "";
+    if (!container) {
         return;
     }
 
+
     const user =
         getCurrentUser();
+
+
+    if (
+        !user ||
+        user.role !== "rider"
+    ) {
+
+        container.innerHTML = "";
+
+        return;
+    }
+
 
     const financials =
         getRiderWeeklyFinancials(
             user.id
         );
 
-    container.innerHTML = `
-        <div class="earnings-card-content">
-            <h3>Weekly Earnings</h3>
 
-            <p>
-                <strong>
-                    ${escapeHtml(
-                        getWeekLabel()
-                    )}
-                </strong>
-            </p>
+    container.innerHTML = `
+
+        <div class="card">
+
+            <div class="head">
+
+                <div>
+
+                    <h2>
+                        My Weekly Earnings
+                    </h2>
+
+                    <p>
+                        Monday - Sunday ·
+                        ${getWeekLabel()}
+                    </p>
+
+                </div>
+
+                <span class="status present">
+                    ${financials.deliveryCount}
+                    delivered
+                </span>
+
+            </div>
+
 
             <div class="earnings-grid">
 
-                <div>
-                    <span>Delivered Orders</span>
-                    <strong>
-                        ${financials.deliveryCount}
-                    </strong>
-                </div>
+                <div class="earning-box">
 
-                <div>
-                    <span>Delivery Earnings</span>
+                    <small>
+                        TOTAL EARNINGS
+                    </small>
+
                     <strong>
-                        ${formatCurrency(
+                        ₦${formatMoney(
                             financials.grossEarnings
                         )}
                     </strong>
+
                 </div>
 
-                <div>
-                    <span>Check-In Fees</span>
+
+                <div class="earning-box">
+
+                    <small>
+                        CHECK-IN FEES
+                    </small>
+
                     <strong>
-                        ${formatCurrency(
+                        ₦${formatMoney(
                             financials.checkInFees
                         )}
                     </strong>
+
                 </div>
 
-                <div>
-                    <span>Net Earnings</span>
+
+                <div class="earning-box net">
+
+                    <small>
+                        NET EARNINGS
+                    </small>
+
                     <strong>
-                        ${formatCurrency(
+                        ₦${formatMoney(
                             financials.netEarnings
                         )}
                     </strong>
+
                 </div>
 
             </div>
+
+
+            <div class="location-note">
+
+                Daily office check-in fee:
+                <strong>
+                    ₦${formatMoney(
+                        DAILY_CHECK_IN_FEE
+                    )}
+                </strong>.
+
+                A fee is recorded once per successful
+                check-in day.
+
+            </div>
+
         </div>
+
     `;
 }
 
 
-/* =========================================================
+/* =====================================================
+   RIDER ATTENDANCE CARD
+===================================================== */
+
+function renderRiderAttendanceCard() {
+
+    const container =
+        document.getElementById(
+            "riderAttendanceCard"
+        );
+
+
+    if (!container) {
+        return;
+    }
+
+
+    const user =
+        getCurrentUser();
+
+
+    if (
+        !user ||
+        user.role !== "rider"
+    ) {
+
+        container.innerHTML = "";
+
+        return;
+    }
+
+
+    const attendance =
+        getRiderTodayAttendance();
+
+
+    if (!attendance) {
+
+        container.innerHTML = `
+
+            <div class="card rider-attendance-card">
+
+                <div class="attendance-top">
+
+                    <div>
+
+                        <div class="attendance-label">
+                            TODAY'S ATTENDANCE
+                        </div>
+
+                        <div class="attendance-title">
+                            Not Checked In
+                        </div>
+
+                        <div class="attendance-description">
+                            Check in when you start your duty.
+                            You must be within 200 meters
+                            of the office. A successful
+                            check-in records a ₦1,000
+                            daily fee.
+                        </div>
+
+                    </div>
+
+                    <span class="attendance-status">
+                        Not Checked In
+                    </span>
+
+                </div>
+
+
+                <div class="attendance-actions">
+
+                    <button
+                        type="button"
+                        class="attendance-btn"
+                        onclick="riderCheckIn()"
+                    >
+                        ✓ Check In
+                    </button>
+
+                </div>
+
+            </div>
+
+        `;
+
+        return;
+    }
+
+
+    const duration =
+        attendance.checkOut
+            ? formatDuration(
+                attendance.durationMinutes
+            )
+            : "In Progress";
+
+
+    if (attendance.checkOut) {
+
+        container.innerHTML = `
+
+            <div class="card rider-attendance-card">
+
+                <div class="attendance-top">
+
+                    <div>
+
+                        <div class="attendance-label">
+                            TODAY'S ATTENDANCE
+                        </div>
+
+                        <div class="attendance-title">
+                            Attendance Complete
+                        </div>
+
+                        <div class="attendance-description">
+                            Your attendance for today
+                            has been completed.
+                        </div>
+
+                    </div>
+
+                    <span class="attendance-status">
+                        Checked Out
+                    </span>
+
+                </div>
+
+
+                <div class="attendance-details">
+
+                    <div class="attendance-detail">
+
+                        <small>DATE</small>
+
+                        <strong>
+                            ${attendance.date}
+                        </strong>
+
+                    </div>
+
+
+                    <div class="attendance-detail">
+
+                        <small>CHECK IN</small>
+
+                        <strong>
+                            ${attendance.checkIn}
+                        </strong>
+
+                    </div>
+
+
+                    <div class="attendance-detail">
+
+                        <small>CHECK OUT</small>
+
+                        <strong>
+                            ${attendance.checkOut}
+                        </strong>
+
+                    </div>
+
+
+                    <div class="attendance-detail">
+
+                        <small>DURATION</small>
+
+                        <strong>
+                            ${duration}
+                        </strong>
+
+                    </div>
+
+
+                    <div class="attendance-detail">
+
+                        <small>CHECK-IN FEE</small>
+
+                        <strong>
+                            ₦${formatMoney(
+                                attendance.checkInFee ||
+                                DAILY_CHECK_IN_FEE
+                            )}
+                        </strong>
+
+                    </div>
+
+                </div>
+
+            </div>
+
+        `;
+
+        return;
+    }
+
+
+    container.innerHTML = `
+
+        <div class="card rider-attendance-card">
+
+            <div class="attendance-top">
+
+                <div>
+
+                    <div class="attendance-label">
+                        TODAY'S ATTENDANCE
+                    </div>
+
+                    <div class="attendance-title">
+                        You Are Present
+                    </div>
+
+                    <div class="attendance-description">
+                        You are currently checked in.
+                    </div>
+
+                </div>
+
+                <span class="attendance-status">
+                    Present
+                </span>
+
+            </div>
+
+
+            <div class="attendance-details">
+
+                <div class="attendance-detail">
+
+                    <small>DATE</small>
+
+                    <strong>
+                        ${attendance.date}
+                    </strong>
+
+                </div>
+
+
+                <div class="attendance-detail">
+
+                    <small>CHECK IN</small>
+
+                    <strong>
+                        ${attendance.checkIn}
+                    </strong>
+
+                </div>
+
+
+                <div class="attendance-detail">
+
+                    <small>CHECK OUT</small>
+
+                    <strong>
+                        Not Checked Out
+                    </strong>
+
+                </div>
+
+
+                <div class="attendance-detail">
+
+                    <small>DURATION</small>
+
+                    <strong>
+                        In Progress
+                    </strong>
+
+                </div>
+
+
+                <div class="attendance-detail">
+
+                    <small>CHECK-IN FEE</small>
+
+                    <strong>
+                        ₦${formatMoney(
+                            attendance.checkInFee ||
+                            DAILY_CHECK_IN_FEE
+                        )}
+                    </strong>
+
+                </div>
+
+            </div>
+
+
+            <div class="attendance-actions">
+
+                <button
+                    type="button"
+                    class="attendance-btn"
+                    onclick="riderCheckOut()"
+                >
+                    ↪ Check Out
+                </button>
+
+            </div>
+
+        </div>
+
+    `;
+}
+
+
+/* =====================================================
    ATTENDANCE PAGE
-   ========================================================= */
+===================================================== */
 
 function renderAttendancePage() {
+
+    const user =
+        getCurrentUser();
+
+
+    if (!user) {
+        return;
+    }
+
+
+    if (
+        user.role === "super_admin"
+    ) {
+
+        renderAdminAttendancePage();
+
+    } else {
+
+        renderRiderAttendancePage();
+
+    }
+}
+
+
+/* =====================================================
+   RIDER ATTENDANCE HISTORY
+===================================================== */
+
+function renderRiderAttendancePage() {
+
     const container =
         document.getElementById(
             "attendanceContent"
         );
 
-    if (!container) return;
 
-    if (isSuperAdmin()) {
-        renderAdminAttendancePage(container);
-    } else {
-        renderRiderAttendancePage(container);
+    if (!container) {
+        return;
     }
-}
 
 
-/* =========================================================
-   RIDER ATTENDANCE PAGE
-   ========================================================= */
-
-function renderRiderAttendancePage(container) {
     const user =
         getCurrentUser();
 
+
     const records =
         getAttendance()
-            .filter(
-                record =>
+            .filter(function (record) {
+
+                return (
                     record.riderId === user.id
-            )
-            .sort(
-                (a, b) =>
-                    `${b.date} ${b.checkIn}`.localeCompare(
-                        `${a.date} ${a.checkIn}`
-                    )
-            );
-
-    const financials =
-        getRiderWeeklyFinancials(
-            user.id
-        );
-
-    let rows = "";
-
-    if (records.length === 0) {
-        rows = `
-            <tr>
-                <td colspan="8">
-                    No attendance records found.
-                </td>
-            </tr>
-        `;
-    } else {
-        rows = records.map(record => {
-            const duration =
-                calculateAttendanceDuration(
-                    record
                 );
 
-            return `
-                <tr>
-                    <td>
-                        ${escapeHtml(record.date)}
-                    </td>
+            })
+            .sort(function (a, b) {
 
-                    <td>
-                        ${escapeHtml(record.checkIn || "-")}
-                    </td>
+                return (
+                    new Date(
+                        (b.checkInTimestamp ||
+                        b.date)
+                    ) -
+                    new Date(
+                        (a.checkInTimestamp ||
+                        a.date)
+                    )
+                );
 
-                    <td>
-                        ${escapeHtml(
-                            record.checkOut || "-"
-                        )}
-                    </td>
+            });
 
-                    <td>
-                        ${formatDuration(duration)}
-                    </td>
 
-                    <td>
-                        ${escapeHtml(
-                            record.status || "-"
-                        )}
-                    </td>
+    const today =
+        getRiderTodayAttendance();
 
-                    <td>
-                        ${formatCurrency(
-                            record.checkInFee || 0
-                        )}
-                    </td>
-
-                    <td>
-                        ${Number(
-                            record.distanceFromOffice || 0
-                        )} m
-                    </td>
-
-                    <td>
-                        ${record.latitude && record.longitude
-                            ? `${Number(record.latitude).toFixed(6)}, ${Number(record.longitude).toFixed(6)}`
-                            : "-"
-                        }
-                    </td>
-                </tr>
-            `;
-        }).join("");
-    }
 
     container.innerHTML = `
-        <div class="attendance-page">
 
-            <h2>My Attendance</h2>
+        <div class="head">
 
-            <div class="attendance-summary">
+            <div>
 
-                <div>
-                    <span>This Week's Check-Ins</span>
-                    <strong>
-                        ${financials.checkInCount}
-                    </strong>
+                <h2>
+                    My Attendance
+                </h2>
+
+                <p>
+                    Your attendance and
+                    check-in history.
+                </p>
+
+            </div>
+
+        </div>
+
+
+        ${
+            !today
+            ?
+            `
+                <div class="card rider-attendance-card">
+
+                    <div class="attendance-top">
+
+                        <div>
+
+                            <div class="attendance-label">
+                                TODAY
+                            </div>
+
+                            <div class="attendance-title">
+                                Not Checked In
+                            </div>
+
+                            <div class="attendance-description">
+                                GPS must confirm that
+                                you are within 200 meters
+                                of the office.
+                            </div>
+
+                        </div>
+
+                    </div>
+
+                    <div class="attendance-actions">
+
+                        <button
+                            class="attendance-btn"
+                            onclick="riderCheckIn()"
+                        >
+                            ✓ Check In
+                        </button>
+
+                    </div>
+
                 </div>
+            `
+            :
+            `
+                <div class="card rider-attendance-card">
 
-                <div>
-                    <span>Check-In Fees</span>
-                    <strong>
-                        ${formatCurrency(
-                            financials.checkInFees
-                        )}
-                    </strong>
+                    <div class="attendance-top">
+
+                        <div>
+
+                            <div class="attendance-label">
+                                TODAY
+                            </div>
+
+                            <div class="attendance-title">
+                                ${escapeHtml(
+                                    today.status
+                                )}
+                            </div>
+
+                            <div class="attendance-description">
+                                Today's attendance
+                                record.
+                            </div>
+
+                        </div>
+
+                        <span class="attendance-status">
+                            ${escapeHtml(
+                                today.status
+                            )}
+                        </span>
+
+                    </div>
+
+                    <div class="attendance-details">
+
+                        <div class="attendance-detail">
+
+                            <small>
+                                CHECK IN
+                            </small>
+
+                            <strong>
+                                ${today.checkIn}
+                            </strong>
+
+                        </div>
+
+                        <div class="attendance-detail">
+
+                            <small>
+                                CHECK OUT
+                            </small>
+
+                            <strong>
+                                ${
+                                    today.checkOut ||
+                                    "Not Checked Out"
+                                }
+                            </strong>
+
+                        </div>
+
+                        <div class="attendance-detail">
+
+                            <small>
+                                DURATION
+                            </small>
+
+                            <strong>
+                                ${
+                                    today.checkOut
+                                    ? formatDuration(
+                                        today.durationMinutes
+                                    )
+                                    : "In Progress"
+                                }
+                            </strong>
+
+                        </div>
+
+                        <div class="attendance-detail">
+
+                            <small>
+                                DISTANCE
+                            </small>
+
+                            <strong>
+                                ${
+                                    today.distanceFromOffice !== undefined
+                                    ? today.distanceFromOffice + " m"
+                                    : "-"
+                                }
+                            </strong>
+
+                        </div>
+
+                        <div class="attendance-detail">
+
+                            <small>
+                                FEE
+                            </small>
+
+                            <strong>
+                                ₦${formatMoney(
+                                    today.checkInFee ||
+                                    DAILY_CHECK_IN_FEE
+                                )}
+                            </strong>
+
+                        </div>
+
+                    </div>
+
+
+                    ${
+                        today.checkOut
+                        ?
+                        ""
+                        :
+                        `
+                            <button
+                                class="attendance-btn"
+                                onclick="riderCheckOut()"
+                            >
+                                ↪ Check Out
+                            </button>
+                        `
+                    }
+
                 </div>
+            `
+        }
+
+
+        <div class="card">
+
+            <div class="head">
 
                 <div>
-                    <span>Delivery Earnings</span>
-                    <strong>
-                        ${formatCurrency(
-                            financials.grossEarnings
-                        )}
-                    </strong>
-                </div>
 
-                <div>
-                    <span>Net Earnings</span>
-                    <strong>
-                        ${formatCurrency(
-                            financials.netEarnings
-                        )}
-                    </strong>
+                    <h2>
+                        Attendance History
+                    </h2>
+
+                    <p>
+                        Previous check-in and
+                        check-out records.
+                    </p>
+
                 </div>
 
             </div>
 
-            <div class="table-container">
+
+            <div class="table">
 
                 <table>
 
                     <thead>
+
                         <tr>
+
                             <th>Date</th>
                             <th>Check In</th>
                             <th>Check Out</th>
                             <th>Duration</th>
                             <th>Status</th>
-                            <th>Fee</th>
                             <th>Distance</th>
-                            <th>Location</th>
+                            <th>Fee</th>
+
                         </tr>
+
                     </thead>
 
                     <tbody>
-                        ${rows}
+
+                        ${
+                            records.length
+                            ?
+                            records.map(function (record) {
+
+                                return `
+
+                                    <tr>
+
+                                        <td>
+                                            ${record.date}
+                                        </td>
+
+                                        <td>
+                                            ${record.checkIn || "-"}
+                                        </td>
+
+                                        <td>
+                                            ${record.checkOut || "-"}
+                                        </td>
+
+                                        <td>
+                                            ${
+                                                record.checkOut
+                                                ? formatDuration(
+                                                    record.durationMinutes
+                                                )
+                                                : "In Progress"
+                                            }
+                                        </td>
+
+                                        <td>
+
+                                            <span class="status ${
+                                                record.status ===
+                                                "Checked Out"
+                                                    ? "checked-out"
+                                                    : "present"
+                                            }">
+
+                                                ${escapeHtml(
+                                                    record.status
+                                                )}
+
+                                            </span>
+
+                                        </td>
+
+                                        <td>
+                                            ${
+                                                record.distanceFromOffice !== undefined
+                                                ? record.distanceFromOffice + " m"
+                                                : "-"
+                                            }
+                                        </td>
+
+                                        <td>
+                                            ₦${formatMoney(
+                                                record.checkInFee ||
+                                                DAILY_CHECK_IN_FEE
+                                            )}
+                                        </td>
+
+                                    </tr>
+
+                                `;
+
+                            }).join("")
+                            :
+                            `
+                                <tr>
+
+                                    <td colspan="7">
+                                        No attendance records yet.
+                                    </td>
+
+                                </tr>
+                            `
+                        }
+
                     </tbody>
 
                 </table>
@@ -1464,216 +2331,158 @@ function renderRiderAttendancePage(container) {
             </div>
 
         </div>
+
     `;
 }
 
 
-/* =========================================================
+/* =====================================================
    ADMIN ATTENDANCE PAGE
-   ========================================================= */
+===================================================== */
 
-function renderAdminAttendancePage(container) {
-    const attendance =
+function renderAdminAttendancePage() {
+
+    const container =
+        document.getElementById(
+            "attendanceContent"
+        );
+
+
+    if (!container) {
+        return;
+    }
+
+
+    const records =
         getAttendance();
+
 
     const riders =
         getRiders();
 
+
     const today =
         getToday();
 
+
     const todayRecords =
-        attendance.filter(
-            record =>
-                record.date === today
-        );
+        records.filter(function (record) {
+
+            return record.date === today;
+
+        });
+
 
     const presentCount =
-        todayRecords.filter(
-            record =>
+        todayRecords.filter(function (record) {
+
+            return (
                 record.status === "Present" ||
                 record.status === "Checked Out"
-        ).length;
+            );
+
+        }).length;
+
 
     const checkedOutCount =
-        todayRecords.filter(
-            record =>
+        todayRecords.filter(function (record) {
+
+            return (
                 record.status === "Checked Out"
-        ).length;
+            );
+
+        }).length;
+
 
     const absentCount =
         Math.max(
-            0,
             riders.length -
-            todayRecords.length
-        );
-
-    const totalFeesToday =
-        todayRecords.reduce(
-            (sum, record) =>
-                sum +
-                Number(
-                    record.checkInFee || 0
-                ),
+            todayRecords.length,
             0
         );
 
-    const rows =
-        attendance
-            .slice()
-            .sort((a, b) =>
-                `${b.date} ${b.checkIn}`.localeCompare(
-                    `${a.date} ${a.checkIn}`
-                )
-            )
-            .map(record => {
-                const duration =
-                    calculateAttendanceDuration(
-                        record
-                    );
-
-                return `
-                    <tr>
-                        <td>
-                            ${escapeHtml(
-                                record.riderName || "-"
-                            )}
-                        </td>
-
-                        <td>
-                            ${escapeHtml(
-                                record.riderId || "-"
-                            )}
-                        </td>
-
-                        <td>
-                            ${escapeHtml(
-                                record.phone || "-"
-                            )}
-                        </td>
-
-                        <td>
-                            ${escapeHtml(
-                                record.date || "-"
-                            )}
-                        </td>
-
-                        <td>
-                            ${escapeHtml(
-                                record.checkIn || "-"
-                            )}
-                        </td>
-
-                        <td>
-                            ${escapeHtml(
-                                record.checkOut || "-"
-                            )}
-                        </td>
-
-                        <td>
-                            ${formatDuration(
-                                duration
-                            )}
-                        </td>
-
-                        <td>
-                            ${escapeHtml(
-                                record.status || "-"
-                            )}
-                        </td>
-
-                        <td>
-                            ${formatCurrency(
-                                record.checkInFee || 0
-                            )}
-                        </td>
-
-                        <td>
-                            ${Number(
-                                record.distanceFromOffice || 0
-                            )} m
-                        </td>
-
-                        <td>
-                            ${
-                                record.latitude &&
-                                record.longitude
-                                    ? `
-                                        ${Number(record.latitude).toFixed(6)},
-                                        ${Number(record.longitude).toFixed(6)}
-                                    `
-                                    : "-"
-                            }
-                        </td>
-                    </tr>
-                `;
-            })
-            .join("");
-
-    const safeRows =
-        rows ||
-        `
-            <tr>
-                <td colspan="11">
-                    No attendance records found.
-                </td>
-            </tr>
-        `;
 
     container.innerHTML = `
-        <div class="attendance-page">
 
-            <h2>Rider Attendance</h2>
+        <div class="head">
 
-            <div class="attendance-summary">
+            <div>
 
-                <div>
-                    <span>Present Today</span>
-                    <strong>
-                        ${presentCount}
-                    </strong>
-                </div>
+                <h2>
+                    Rider Attendance
+                </h2>
 
-                <div>
-                    <span>Checked Out</span>
-                    <strong>
-                        ${checkedOutCount}
-                    </strong>
-                </div>
-
-                <div>
-                    <span>Absent Today</span>
-                    <strong>
-                        ${absentCount}
-                    </strong>
-                </div>
-
-                <div>
-                    <span>Today's Fees</span>
-                    <strong>
-                        ${formatCurrency(
-                            totalFeesToday
-                        )}
-                    </strong>
-                </div>
+                <p>
+                    Monitor rider check-in,
+                    check-out, GPS location
+                    and attendance duration.
+                </p>
 
             </div>
 
-            <div class="attendance-filter">
-                <input
-                    type="text"
-                    id="attendanceSearch"
-                    placeholder="Search rider name or ID..."
-                    oninput="filterAttendance()"
-                >
+            <input
+                id="attendanceSearch"
+                class="attendance-search"
+                placeholder="Search rider..."
+                oninput="filterAttendance()"
+            >
+
+        </div>
+
+
+        <div class="attendance-stats">
+
+            <div class="attendance-stat">
+
+                <small>
+                    PRESENT TODAY
+                </small>
+
+                <strong>
+                    ${presentCount}
+                </strong>
+
             </div>
 
-            <div class="table-container">
 
-                <table id="attendanceTable">
+            <div class="attendance-stat">
+
+                <small>
+                    CHECKED OUT
+                </small>
+
+                <strong>
+                    ${checkedOutCount}
+                </strong>
+
+            </div>
+
+
+            <div class="attendance-stat">
+
+                <small>
+                    ABSENT
+                </small>
+
+                <strong>
+                    ${absentCount}
+                </strong>
+
+            </div>
+
+        </div>
+
+
+        <div class="card">
+
+            <div class="table">
+
+                <table>
 
                     <thead>
+
                         <tr>
+
                             <th>Rider</th>
                             <th>Rider ID</th>
                             <th>Phone</th>
@@ -1685,122 +2494,135 @@ function renderAdminAttendancePage(container) {
                             <th>Fee</th>
                             <th>Distance</th>
                             <th>Location</th>
+
                         </tr>
+
                     </thead>
 
                     <tbody id="attendanceRows">
-                        ${safeRows}
+
+                        ${attendanceRows(records)}
+
                     </tbody>
 
                 </table>
 
             </div>
 
-            <div class="weekly-earnings-section">
+        </div>
 
-                <h2>
-                    Weekly Rider Earnings
-                </h2>
 
-                <p>
-                    ${escapeHtml(
-                        getWeekLabel()
-                    )}
-                </p>
+        <div class="card">
 
-                <div class="table-container">
+            <div class="head">
 
-                    <table>
+                <div>
 
-                        <thead>
-                            <tr>
-                                <th>Rider</th>
-                                <th>Rider ID</th>
-                                <th>Delivered Orders</th>
-                                <th>Delivery Earnings</th>
-                                <th>Check-In Fees</th>
-                                <th>Net Earnings</th>
-                            </tr>
-                        </thead>
+                    <h2>
+                        Weekly Rider Earnings
+                    </h2>
 
-                        <tbody>
-                            ${weeklyRiderEarningsRows()}
-                        </tbody>
-
-                    </table>
+                    <p>
+                        Monday - Sunday ·
+                        ${getWeekLabel()}
+                    </p>
 
                 </div>
 
             </div>
 
+
+            <div class="table">
+
+                <table>
+
+                    <thead>
+
+                        <tr>
+
+                            <th>Rider</th>
+                            <th>Rider ID</th>
+                            <th>Deliveries</th>
+                            <th>Total Earnings</th>
+                            <th>Check-in Fees</th>
+                            <th>Net Earnings</th>
+
+                        </tr>
+
+                    </thead>
+
+                    <tbody id="riderEarningsRows">
+
+                        ${weeklyRiderEarningsRows()}
+
+                    </tbody>
+
+                </table>
+
+            </div>
+
         </div>
+
     `;
 }
 
 
-/* =========================================================
-   ATTENDANCE SEARCH
-   ========================================================= */
-
-function filterAttendance() {
-    const input =
-        document.getElementById(
-            "attendanceSearch"
-        );
-
-    const search =
-        input?.value
-            .toLowerCase()
-            .trim() || "";
-
-    const rows =
-        document.querySelectorAll(
-            "#attendanceRows tr"
-        );
-
-    rows.forEach(row => {
-        const text =
-            row.textContent
-                .toLowerCase();
-
-        row.style.display =
-            text.includes(search)
-                ? ""
-                : "none";
-    });
-}
-
-
-/* =========================================================
-   WEEKLY RIDER EARNINGS TABLE
-   ========================================================= */
+/* =====================================================
+   ADMIN WEEKLY EARNINGS
+===================================================== */
 
 function weeklyRiderEarningsRows() {
+
     const riders =
         getRiders();
 
-    if (riders.length === 0) {
+
+    if (!riders.length) {
+
         return `
+
             <tr>
+
                 <td colspan="6">
-                    No registered riders found.
+                    No registered riders yet.
                 </td>
+
             </tr>
+
         `;
     }
 
-    return riders.map(rider => {
+
+    return riders.map(function (rider) {
+
         const financials =
             getRiderWeeklyFinancials(
                 rider.id
             );
 
+
+        const riderName =
+            rider.firstName +
+            " " +
+            rider.lastName;
+
+
         return `
-            <tr>
+
+            <tr
+                data-earnings-rider="${escapeHtml(
+                    riderName.toLowerCase()
+                )}"
+            >
+
                 <td>
-                    ${escapeHtml(
-                        `${rider.firstName || ""} ${rider.lastName || ""}`.trim()
-                    )}
+
+                    <strong>
+                        ${escapeHtml(
+                            riderName
+                        )}
+                    </strong>
+
                 </td>
 
                 <td>
@@ -1814,373 +2636,1003 @@ function weeklyRiderEarningsRows() {
                 </td>
 
                 <td>
-                    ${formatCurrency(
-                        financials.grossEarnings
-                    )}
+
+                    <strong>
+                        ₦${formatMoney(
+                            financials.grossEarnings
+                        )}
+                    </strong>
+
                 </td>
 
                 <td>
-                    ${formatCurrency(
+                    ₦${formatMoney(
                         financials.checkInFees
                     )}
                 </td>
 
                 <td>
-                    <strong>
-                        ${formatCurrency(
+
+                    <strong class="${
+                        financials.netEarnings >= 0
+                            ? "green"
+                            : ""
+                    }">
+
+                        ₦${formatMoney(
                             financials.netEarnings
                         )}
+
                     </strong>
+
                 </td>
+
             </tr>
+
         `;
+
     }).join("");
 }
 
 
-/* =========================================================
-   DELIVERY HELPERS
-   ========================================================= */
+/* =====================================================
+   ADMIN ATTENDANCE ROWS
+===================================================== */
 
-function getRiderName(riderId) {
-    if (!riderId) {
-        return "Unassigned";
-    }
+function attendanceRows(records) {
 
-    const rider =
-        getRiders().find(
-            item =>
-                item.id === riderId
-        );
-
-    if (!rider) {
-        return "Unknown Rider";
-    }
-
-    return (
-        `${rider.firstName || ""} ${rider.lastName || ""}`
-            .trim() ||
-        rider.id
-    );
-}
-
-function canEditDelivery(delivery) {
-    const user =
-        getCurrentUser();
-
-    if (!user) {
-        return false;
-    }
-
-    if (user.role === "super_admin") {
-        return true;
-    }
-
-    return (
-        user.role === "rider" &&
-        delivery.riderId === user.id
-    );
-}
-
-function canUpdateDeliveryStatus(delivery) {
-    return canEditDelivery(delivery);
-}
-
-function getVisibleDeliveries() {
-    const deliveries =
-        getDeliveries();
-
-    const user =
-        getCurrentUser();
-
-    if (!user) {
-        return [];
-    }
-
-    if (user.role === "super_admin") {
-        return deliveries;
-    }
-
-    return deliveries.filter(
-        delivery =>
-            delivery.riderId === user.id
-    );
-}
+    const riders =
+        getRiders();
 
 
-/* =========================================================
-   DELIVERY FILTERING
-   ========================================================= */
+    if (
+        !riders.length &&
+        !records.length
+    ) {
 
-function setDeliveryFilter(filter) {
-    deliveryFilter = filter;
-
-    document
-        .querySelectorAll(
-            "[data-delivery-filter]"
-        )
-        .forEach(button => {
-            button.classList.toggle(
-                "active",
-                button.dataset.deliveryFilter === filter
-            );
-        });
-
-    renderDeliveries();
-}
-
-function getFilteredDeliveries() {
-    const search =
-        document.getElementById(
-            "search"
-        )?.value
-            .toLowerCase()
-            .trim() || "";
-
-    let deliveries =
-        getVisibleDeliveries();
-
-    if (deliveryFilter !== "All") {
-        deliveries =
-            deliveries.filter(
-                delivery =>
-                    delivery.status ===
-                    deliveryFilter
-            );
-    }
-
-    if (search) {
-        deliveries =
-            deliveries.filter(
-                delivery =>
-                    String(
-                        delivery.id || ""
-                    )
-                        .toLowerCase()
-                        .includes(search) ||
-
-                    String(
-                        delivery.customer || ""
-                    )
-                        .toLowerCase()
-                        .includes(search) ||
-
-                    String(
-                        delivery.pickup || ""
-                    )
-                        .toLowerCase()
-                        .includes(search) ||
-
-                    String(
-                        delivery.destination || ""
-                    )
-                        .toLowerCase()
-                        .includes(search) ||
-
-                    String(
-                        getRiderName(
-                            delivery.riderId
-                        )
-                    )
-                        .toLowerCase()
-                        .includes(search)
-            );
-    }
-
-    return deliveries;
-}
-
-
-/* =========================================================
-   DELIVERY TABLE
-   ========================================================= */
-
-function deliveryRows(deliveries) {
-    if (!deliveries.length) {
         return `
+
             <tr>
-                <td colspan="9">
-                    No deliveries found.
+
+                <td colspan="11">
+                    No registered riders yet.
                 </td>
+
             </tr>
+
         `;
     }
 
-    return deliveries.map(delivery => {
-        const editable =
-            canEditDelivery(
-                delivery
+
+    const sortedRecords =
+        records
+            .slice()
+            .sort(function (a, b) {
+
+                return (
+                    new Date(
+                        b.checkInTimestamp ||
+                        b.date
+                    ) -
+                    new Date(
+                        a.checkInTimestamp ||
+                        a.date
+                    )
+                );
+
+            });
+
+
+    /*
+       Show every historical attendance record.
+       Riders without a record today are also
+       displayed as Absent.
+    */
+
+
+    const rows = [];
+
+
+    sortedRecords.forEach(function (record) {
+
+        const rider =
+            riders.find(function (item) {
+
+                return item.id === record.riderId;
+
+            });
+
+
+        const riderName =
+            record.riderName ||
+            (
+                rider
+                    ? rider.firstName +
+                      " " +
+                      rider.lastName
+                    : "Unknown Rider"
             );
 
-        return `
-            <tr>
+
+        const statusClass =
+            record.status === "Checked Out"
+                ? "checked-out"
+                : "present";
+
+
+        rows.push(`
+
+            <tr
+                data-rider-name="${escapeHtml(
+                    riderName.toLowerCase()
+                )}"
+
+                data-rider-id="${escapeHtml(
+                    String(
+                        record.riderId || ""
+                    ).toLowerCase()
+                )}"
+            >
 
                 <td>
                     ${escapeHtml(
-                        delivery.id
+                        riderName
                     )}
                 </td>
 
                 <td>
                     ${escapeHtml(
-                        delivery.customer || "-"
+                        record.riderId || "-"
                     )}
                 </td>
 
                 <td>
                     ${escapeHtml(
-                        delivery.pickup || "-"
+                        record.phone ||
+                        rider?.phone ||
+                        "-"
                     )}
                 </td>
 
                 <td>
                     ${escapeHtml(
-                        delivery.destination || "-"
+                        record.date || "-"
                     )}
                 </td>
 
                 <td>
                     ${escapeHtml(
-                        getRiderName(
-                            delivery.riderId
+                        record.checkIn || "-"
+                    )}
+                </td>
+
+                <td>
+                    ${escapeHtml(
+                        record.checkOut || "-"
+                    )}
+                </td>
+
+                <td>
+                    ${
+                        record.checkOut
+                        ? formatDuration(
+                            record.durationMinutes
                         )
-                    )}
+                        : "In Progress"
+                    }
                 </td>
 
                 <td>
-                    <span class="status-badge">
+
+                    <span class="status ${statusClass}">
                         ${escapeHtml(
-                            delivery.status || "Pending"
+                            record.status ||
+                            "Present"
                         )}
                     </span>
+
                 </td>
 
                 <td>
-                    ${formatCurrency(
-                        delivery.amount || 0
+                    ₦${formatMoney(
+                        record.checkInFee ||
+                        DAILY_CHECK_IN_FEE
                     )}
                 </td>
 
                 <td>
-                    ${formatCurrency(
-                        delivery.riderEarning || 0
-                    )}
+                    ${
+                        record.distanceFromOffice !== undefined
+                        ? record.distanceFromOffice +
+                          " m"
+                        : "-"
+                    }
                 </td>
 
                 <td>
 
                     ${
-                        editable
-                            ? `
-                                <button
-                                    class="btn btn-sm"
-                                    onclick="openEditDelivery('${delivery.id}')"
-                                >
-                                    Edit
-                                </button>
-                            `
-                            : ""
+                        record.latitude !== undefined &&
+                        record.longitude !== undefined
+                        ?
+                        `
+                            ${Number(
+                                record.latitude
+                            ).toFixed(6)},
+                            ${Number(
+                                record.longitude
+                            ).toFixed(6)}
+                        `
+                        :
+                        "-"
                     }
 
                 </td>
 
             </tr>
-        `;
-    }).join("");
-}
+
+        `);
+
+    });
 
 
-/* =========================================================
-   RENDER DELIVERIES
-   ========================================================= */
+    /*
+       Add today's absent riders.
+    */
 
-function renderDeliveries() {
-    const tableBody =
-        document.getElementById(
-            "allRows"
-        );
-
-    if (!tableBody) return;
-
-    const deliveries =
-        getFilteredDeliveries();
-
-    tableBody.innerHTML =
-        deliveryRows(
-            deliveries
-        );
-}
+    const today =
+        getToday();
 
 
-/* =========================================================
-   RECENT DELIVERIES
-   ========================================================= */
+    riders.forEach(function (rider) {
 
-function renderRecentDeliveries() {
-    const container =
-        document.getElementById(
-            "recent"
-        );
+        const hasTodayRecord =
+            records.some(function (record) {
 
-    if (!container) return;
+                return (
+                    record.riderId === rider.id &&
+                    record.date === today
+                );
 
-    const deliveries =
-        getVisibleDeliveries()
-            .slice()
-            .sort(
-                (a, b) =>
-                    new Date(
-                        b.updatedAt ||
-                        b.createdAt ||
-                        0
-                    ) -
-                    new Date(
-                        a.updatedAt ||
-                        a.createdAt ||
-                        0
-                    )
-            )
-            .slice(0, 5);
+            });
 
-    if (!deliveries.length) {
-        container.innerHTML = `
-            <tr>
-                <td colspan="7">
-                    No deliveries yet.
+
+        if (hasTodayRecord) {
+            return;
+        }
+
+
+        rows.push(`
+
+            <tr
+                data-rider-name="${escapeHtml(
+                    (
+                        rider.firstName +
+                        " " +
+                        rider.lastName
+                    ).toLowerCase()
+                )}"
+
+                data-rider-id="${escapeHtml(
+                    rider.id.toLowerCase()
+                )}"
+            >
+
+                <td>
+
+                    ${escapeHtml(
+                        rider.firstName +
+                        " " +
+                        rider.lastName
+                    )}
+
                 </td>
-            </tr>
-        `;
 
+                <td>
+                    ${escapeHtml(
+                        rider.id
+                    )}
+                </td>
+
+                <td>
+                    ${escapeHtml(
+                        rider.phone
+                    )}
+                </td>
+
+                <td>
+                    ${today}
+                </td>
+
+                <td>
+                    -
+                </td>
+
+                <td>
+                    -
+                </td>
+
+                <td>
+                    -
+                </td>
+
+                <td>
+
+                    <span class="status absent">
+                        Absent
+                    </span>
+
+                </td>
+
+                <td>
+                    ₦0
+                </td>
+
+                <td>
+                    -
+                </td>
+
+                <td>
+                    -
+                </td>
+
+            </tr>
+
+        `);
+
+    });
+
+
+    return rows.join("");
+}
+
+
+/* =====================================================
+   ATTENDANCE SEARCH
+===================================================== */
+
+function filterAttendance() {
+
+    const input =
+        document.getElementById(
+            "attendanceSearch"
+        );
+
+
+    const search =
+        String(
+            input?.value || ""
+        ).toLowerCase();
+
+
+    document
+        .querySelectorAll(
+            "#attendanceRows tr"
+        )
+        .forEach(function (row) {
+
+            const name =
+                row.dataset.riderName ||
+                "";
+
+            const id =
+                row.dataset.riderId ||
+                "";
+
+
+            row.style.display =
+                name.includes(search) ||
+                id.includes(search)
+                    ? ""
+                    : "none";
+
+        });
+}
+
+
+/* =====================================================
+   DELIVERY STORAGE
+===================================================== */
+
+function getDeliveries() {
+
+    const records =
+        JSON.parse(
+            localStorage.getItem(
+                "blackRabbitDeliveries"
+            ) || "[]"
+        );
+
+
+    let changed = false;
+
+
+    records.forEach(function (delivery) {
+
+        if (
+            delivery.riderEarning === undefined ||
+            delivery.riderEarning === null
+        ) {
+
+            delivery.riderEarning = 0;
+
+            changed = true;
+
+        }
+
+
+        /*
+           Existing delivered orders may not have
+           deliveredAt. Use updatedAt/createdAt once
+           for migration.
+        */
+
+        if (
+            delivery.status === "Delivered" &&
+            !delivery.deliveredAt
+        ) {
+
+            delivery.deliveredAt =
+                delivery.updatedAt ||
+                delivery.createdAt ||
+                new Date().toISOString();
+
+            changed = true;
+
+        }
+
+    });
+
+
+    if (changed) {
+
+        localStorage.setItem(
+            "blackRabbitDeliveries",
+            JSON.stringify(records)
+        );
+
+    }
+
+
+    return records;
+}
+
+
+function saveDeliveries(records) {
+
+    localStorage.setItem(
+        "blackRabbitDeliveries",
+        JSON.stringify(records)
+    );
+}
+
+
+/* =====================================================
+   INITIAL DELIVERY DATA
+===================================================== */
+
+function initializeDeliveries() {
+
+    const existing =
+        localStorage.getItem(
+            "blackRabbitDeliveries"
+        );
+
+
+    if (existing) {
         return;
     }
 
-    container.innerHTML =
-        deliveries.map(
-            delivery => `
-                <tr>
-                    <td>
-                        ${escapeHtml(
+
+    const now =
+        new Date().toISOString();
+
+
+    const initialDeliveries = [
+
+        {
+            id: "BR-10482",
+
+            customerName: "Amina Musa",
+            customerPhone: "08012345001",
+
+            pickupAddress: "Barnawa",
+            destination: "Kaduna South",
+
+            packageDescription: "Documents",
+
+            amount: 8500,
+
+            riderEarning: 0,
+
+            notes: "",
+
+            riderId: "",
+
+            status: "In Transit",
+
+            createdAt: now,
+            updatedAt: now,
+
+            deliveredAt: "",
+
+            createdBy: "System",
+            updatedBy: "System",
+
+            history: [
+
+                {
+                    status: "Pending",
+                    timestamp: now,
+                    by: "System"
+                },
+
+                {
+                    status: "In Transit",
+                    timestamp: now,
+                    by: "System"
+                }
+
+            ]
+
+        },
+
+
+        {
+            id: "BR-10481",
+
+            customerName: "Yusuf Kabir",
+            customerPhone: "08012345002",
+
+            pickupAddress: "Kawo",
+            destination: "Ungwan Rimi",
+
+            packageDescription: "Parcel",
+
+            amount: 5200,
+
+            riderEarning: 0,
+
+            notes: "",
+
+            riderId: "",
+
+            status: "Delivered",
+
+            createdAt: now,
+            updatedAt: now,
+
+            deliveredAt: now,
+
+            createdBy: "System",
+            updatedBy: "System",
+
+            history: [
+
+                {
+                    status: "Pending",
+                    timestamp: now,
+                    by: "System"
+                },
+
+                {
+                    status: "Delivered",
+                    timestamp: now,
+                    by: "System"
+                }
+
+            ]
+
+        },
+
+
+        {
+            id: "BR-10480",
+
+            customerName: "Safiya Ahmed",
+            customerPhone: "08012345003",
+
+            pickupAddress: "Malali",
+            destination: "Tafawa Balewa",
+
+            packageDescription: "Food package",
+
+            amount: 7800,
+
+            riderEarning: 0,
+
+            notes: "",
+
+            riderId: "",
+
+            status: "Pending",
+
+            createdAt: now,
+            updatedAt: now,
+
+            deliveredAt: "",
+
+            createdBy: "System",
+            updatedBy: "System",
+
+            history: [
+
+                {
+                    status: "Pending",
+                    timestamp: now,
+                    by: "System"
+                }
+
+            ]
+
+        },
+
+
+        {
+            id: "BR-10479",
+
+            customerName: "Maryam Bello",
+            customerPhone: "08012345004",
+
+            pickupAddress: "Kaduna North",
+            destination: "Barnawa",
+
+            packageDescription: "Clothing",
+
+            amount: 6400,
+
+            riderEarning: 0,
+
+            notes: "",
+
+            riderId: "",
+
+            status: "Delivered",
+
+            createdAt: now,
+            updatedAt: now,
+
+            deliveredAt: now,
+
+            createdBy: "System",
+            updatedBy: "System",
+
+            history: [
+
+                {
+                    status: "Pending",
+                    timestamp: now,
+                    by: "System"
+                },
+
+                {
+                    status: "Delivered",
+                    timestamp: now,
+                    by: "System"
+                }
+
+            ]
+
+        }
+
+    ];
+
+
+    saveDeliveries(
+        initialDeliveries
+    );
+}
+
+
+/* =====================================================
+   DELIVERY ID
+===================================================== */
+
+function generateDeliveryId() {
+
+    const deliveries =
+        getDeliveries();
+
+
+    let id;
+
+
+    do {
+
+        const now =
+            new Date();
+
+
+        const date =
+            now.getFullYear() +
+            String(
+                now.getMonth() + 1
+            ).padStart(2, "0") +
+            String(
+                now.getDate()
+            ).padStart(2, "0");
+
+
+        const random =
+            Math.floor(
+                1000 +
+                Math.random() * 9000
+            );
+
+
+        id =
+            "BR-" +
+            date +
+            "-" +
+            random;
+
+
+    } while (
+        deliveries.some(function (item) {
+
+            return item.id === id;
+
+        })
+    );
+
+
+    return id;
+}
+
+
+/* =====================================================
+   DELIVERY PERMISSIONS
+===================================================== */
+
+function canEditDelivery(delivery) {
+
+    const user =
+        getCurrentUser();
+
+
+    if (!user || !delivery) {
+        return false;
+    }
+
+
+    if (
+        user.role === "super_admin"
+    ) {
+        return true;
+    }
+
+
+    return (
+        delivery.riderId === user.id
+    );
+}
+
+
+function canUpdateDeliveryStatus(delivery) {
+
+    return canEditDelivery(
+        delivery
+    );
+}
+
+
+/* =====================================================
+   RIDER NAME
+===================================================== */
+
+function getRiderName(riderId) {
+
+    if (!riderId) {
+        return "Unassigned";
+    }
+
+
+    const rider =
+        getRiders().find(
+            function (item) {
+
+                return item.id === riderId;
+
+            }
+        );
+
+
+    if (!rider) {
+        return "Unknown Rider";
+    }
+
+
+    return (
+        rider.firstName +
+        " " +
+        rider.lastName
+    );
+}
+
+
+/* =====================================================
+   STATUS CLASS
+===================================================== */
+
+function getStatusClass(status) {
+
+    return String(status)
+        .toLowerCase()
+        .replace(/\s+/g, "-");
+}
+
+
+/* =====================================================
+   VISIBLE DELIVERIES
+===================================================== */
+
+function getVisibleDeliveries() {
+
+    const all =
+        getDeliveries();
+
+
+    const user =
+        getCurrentUser();
+
+
+    if (!user) {
+        return [];
+    }
+
+
+    if (
+        user.role === "super_admin"
+    ) {
+
+        return all;
+
+    }
+
+
+    return all.filter(
+        function (delivery) {
+
+            return (
+                delivery.riderId ===
+                user.id
+            );
+
+        }
+    );
+}
+
+
+/* =====================================================
+   DELIVERY TABLE
+===================================================== */
+
+function deliveryRows(records) {
+
+    const user =
+        getCurrentUser();
+
+
+    if (!records.length) {
+
+        return `
+
+            <tr>
+
+                <td colspan="8">
+                    No deliveries found.
+                </td>
+
+            </tr>
+
+        `;
+    }
+
+
+    return records.map(
+        function (delivery) {
+
+            const canEdit =
+                canEditDelivery(
+                    delivery
+                );
+
+
+            let actions = "";
+
+
+            if (
+                user?.role ===
+                "super_admin"
+            ) {
+
+                actions = `
+
+                    <button
+                        class="small-btn yellow"
+                        onclick="openEditDelivery('${escapeHtml(
                             delivery.id
-                        )}
+                        )}')"
+                    >
+                        Edit
+                    </button>
+
+                `;
+
+            } else {
+
+                actions = `
+
+                    ${
+                        canEdit
+                        ?
+                        `
+                            <button
+                                class="small-btn blue"
+                                onclick="openEditDelivery('${escapeHtml(
+                                    delivery.id
+                                )}')"
+                            >
+                                Update
+                            </button>
+                        `
+                        :
+                        ""
+                    }
+
+                `;
+
+            }
+
+
+            return `
+
+                <tr>
+
+                    <td>
+
+                        <strong>
+                            ${escapeHtml(
+                                delivery.id
+                            )}
+                        </strong>
+
                     </td>
+
+
+                    <td>
+
+                        <strong>
+                            ${escapeHtml(
+                                delivery.customerName
+                            )}
+                        </strong>
+
+                        <br>
+
+                        <small>
+                            ${escapeHtml(
+                                delivery.customerPhone ||
+                                ""
+                            )}
+                        </small>
+
+                    </td>
+
 
                     <td>
                         ${escapeHtml(
-                            delivery.customer || "-"
+                            delivery.pickupAddress
                         )}
                     </td>
 
-                    <td>
-                        ${escapeHtml(
-                            delivery.pickup || "-"
-                        )}
-                    </td>
 
                     <td>
                         ${escapeHtml(
-                            delivery.destination || "-"
+                            delivery.destination
                         )}
                     </td>
+
 
                     <td>
                         ${escapeHtml(
@@ -2190,722 +3642,423 @@ function renderRecentDeliveries() {
                         )}
                     </td>
 
+
                     <td>
-                        ${escapeHtml(
-                            delivery.status || "-"
+
+                        <span
+                            class="status ${getStatusClass(
+                                delivery.status
+                            )}"
+                        >
+                            ${escapeHtml(
+                                delivery.status
+                            )}
+                        </span>
+
+                    </td>
+
+
+                    <td>
+                        ₦${formatMoney(
+                            delivery.amount
                         )}
                     </td>
 
+
                     <td>
-                        ${formatCurrency(
-                            delivery.amount || 0
-                        )}
+
+                        <div class="action-group">
+
+                            ${actions}
+
+                        </div>
+
                     </td>
+
                 </tr>
-            `
-        ).join("");
+
+            `;
+
+        }
+    ).join("");
 }
 
 
-/* =========================================================
-   POPULATE RIDER OPTIONS
-   ========================================================= */
+/* =====================================================
+   ESCAPE HTML
+===================================================== */
 
-function populateRiderOptions() {
-    const select =
-        document.getElementById(
-            "deliveryRider"
-        );
+function escapeHtml(value) {
 
-    if (!select) return;
-
-    const riders =
-        getRiders();
-
-    const user =
-        getCurrentUser();
-
-    select.innerHTML = "";
-
-    if (user?.role === "rider") {
-        select.innerHTML = `
-            <option value="${escapeHtml(user.id)}">
-                ${escapeHtml(
-                    `${user.firstName || ""} ${user.lastName || ""}`.trim()
-                )}
-            </option>
-        `;
-
-        select.value = user.id;
-        select.disabled = true;
-
-        return;
-    }
-
-    select.disabled = false;
-
-    select.innerHTML = `
-        <option value="">
-            Select Rider
-        </option>
-
-        ${riders.map(rider => `
-            <option value="${escapeHtml(rider.id)}">
-                ${escapeHtml(
-                    `${rider.firstName || ""} ${rider.lastName || ""}`.trim()
-                )}
-                (${escapeHtml(rider.id)})
-            </option>
-        `).join("")}
-    `;
+    return String(value ?? "")
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
 }
 
 
-/* =========================================================
-   NEW DELIVERY
-   ========================================================= */
+/* =====================================================
+   MONEY
+===================================================== */
 
-function openNewDelivery() {
-    editingDeliveryId = null;
+function formatMoney(value) {
 
-    const form =
-        document.getElementById(
-            "form"
-        );
-
-    if (form) {
-        form.reset();
-    }
-
-    const modal =
-        document.getElementById(
-            "deliveryModal"
-        );
-
-    if (modal) {
-        modal.style.display = "flex";
-    }
-
-    const earningInput =
-        document.getElementById(
-            "deliveryRiderEarning"
-        );
-
-    const riderSelect =
-        document.getElementById(
-            "deliveryRider"
-        );
-
-    if (earningInput) {
-        earningInput.value = "0";
-        earningInput.disabled =
-            !isSuperAdmin();
-    }
-
-    populateRiderOptions();
-
-    if (isRider()) {
-        const user =
-            getCurrentUser();
-
-        if (riderSelect) {
-            riderSelect.value =
-                user.id;
-            riderSelect.disabled =
-                true;
-        }
-
-        const status =
-            document.getElementById(
-                "deliveryStatus"
-            );
-
-        if (status) {
-            status.value =
-                "Assigned";
-        }
-    }
-}
+    const number =
+        Number(value || 0);
 
 
-/* =========================================================
-   EDIT DELIVERY
-   ========================================================= */
-
-function openEditDelivery(id) {
-    const delivery =
-        getDeliveries().find(
-            item =>
-                item.id === id
-        );
-
-    if (!delivery) {
-        alert("Delivery not found.");
-        return;
-    }
-
-    if (!canEditDelivery(delivery)) {
-        alert(
-            "You do not have permission to edit this delivery."
-        );
-        return;
-    }
-
-    editingDeliveryId = id;
-
-    const modal =
-        document.getElementById(
-            "deliveryModal"
-        );
-
-    if (modal) {
-        modal.style.display = "flex";
-    }
-
-    const fields = {
-        deliveryCustomer: delivery.customer || "",
-        deliveryPhone: delivery.phone || "",
-        deliveryPickup: delivery.pickup || "",
-        deliveryDestination:
-            delivery.destination || "",
-        deliveryPackage:
-            delivery.package || "",
-        deliveryAmount:
-            delivery.amount || 0,
-        deliveryRiderEarning:
-            delivery.riderEarning || 0,
-        deliveryStatus:
-            delivery.status || "Pending",
-        deliveryNotes:
-            delivery.notes || ""
-    };
-
-    Object.entries(fields).forEach(
-        ([id, value]) => {
-            const element =
-                document.getElementById(id);
-
-            if (element) {
-                element.value = value;
-            }
-        }
+    return number.toLocaleString(
+        "en-NG"
     );
-
-    populateRiderOptions();
-
-    const riderSelect =
-        document.getElementById(
-            "deliveryRider"
-        );
-
-    if (riderSelect) {
-        riderSelect.value =
-            delivery.riderId || "";
-
-        riderSelect.disabled =
-            isRider();
-    }
-
-    const earningInput =
-        document.getElementById(
-            "deliveryRiderEarning"
-        );
-
-    if (earningInput) {
-        earningInput.disabled =
-            !isSuperAdmin();
-    }
-
-    const history =
-        document.getElementById(
-            "deliveryHistory"
-        );
-
-    if (history) {
-        history.value =
-            Array.isArray(
-                delivery.history
-            )
-                ? delivery.history
-                    .map(item =>
-                        `${item.status} - ${item.time}`
-                    )
-                    .join("\n")
-                : "";
-    }
 }
 
 
-/* =========================================================
-   CLOSE DELIVERY MODAL
-   ========================================================= */
+/* =====================================================
+   RENDER DELIVERIES
+===================================================== */
 
-function closeDeliveryModal() {
-    const modal =
+function renderDeliveries() {
+
+    const rows =
         document.getElementById(
-            "deliveryModal"
+            "allRows"
         );
 
-    if (modal) {
-        modal.style.display = "none";
-    }
 
-    editingDeliveryId = null;
-}
-
-
-/* =========================================================
-   CREATE / UPDATE DELIVERY
-   ========================================================= */
-
-function saveDelivery(event) {
-    if (event) {
-        event.preventDefault();
-    }
-
-    const user =
-        getCurrentUser();
-
-    if (!user) {
-        alert("Please log in.");
+    if (!rows) {
         return;
     }
 
-    const customer =
-        document.getElementById(
-            "deliveryCustomer"
-        )?.value.trim() || "";
 
-    const phone =
-        document.getElementById(
-            "deliveryPhone"
-        )?.value.trim() || "";
+    let records =
+        getVisibleDeliveries();
 
-    const pickup =
-        document.getElementById(
-            "deliveryPickup"
-        )?.value.trim() || "";
 
-    const destination =
-        document.getElementById(
-            "deliveryDestination"
-        )?.value.trim() || "";
-
-    const packageDescription =
-        document.getElementById(
-            "deliveryPackage"
-        )?.value.trim() || "";
-
-    const amount =
-        Number(
+    const search =
+        String(
             document.getElementById(
-                "deliveryAmount"
-            )?.value || 0
-        );
+                "search"
+            )?.value || ""
+        )
+        .toLowerCase()
+        .trim();
 
-    const riderSelect =
-        document.getElementById(
-            "deliveryRider"
-        );
 
-    let riderId =
-        riderSelect?.value || "";
+    if (search) {
 
-    const status =
-        document.getElementById(
-            "deliveryStatus"
-        )?.value || "Pending";
+        records =
+            records.filter(
+                function (delivery) {
 
-    const notes =
-        document.getElementById(
-            "deliveryNotes"
-        )?.value.trim() || "";
+                    const riderName =
+                        getRiderName(
+                            delivery.riderId
+                        );
 
-    const riderEarningInput =
-        document.getElementById(
-            "deliveryRiderEarning"
-        );
 
-    let riderEarning =
-        Number(
-            riderEarningInput?.value || 0
-        );
+                    return [
 
-    if (!customer || !pickup || !destination) {
-        alert(
-            "Please enter the customer, pickup and destination."
-        );
-        return;
-    }
+                        delivery.id,
+                        delivery.customerName,
+                        delivery.customerPhone,
+                        delivery.pickupAddress,
+                        delivery.destination,
+                        delivery.packageDescription,
+                        delivery.status,
+                        riderName
 
-    if (user.role === "rider") {
-        riderId =
-            user.id;
+                    ].some(
+                        function (value) {
 
-        /*
-         * Riders cannot modify their own
-         * earning.
-         */
-        if (editingDeliveryId) {
-            const existing =
-                getDeliveries().find(
-                    item =>
-                        item.id ===
-                        editingDeliveryId
-                );
+                            return String(
+                                value || ""
+                            )
+                            .toLowerCase()
+                            .includes(search);
 
-            if (existing) {
-                riderEarning =
-                    Number(
-                        existing.riderEarning || 0
+                        }
                     );
-            }
-        } else {
-            riderEarning = 0;
-        }
-    }
 
-    if (user.role === "super_admin") {
-        riderEarning =
-            Math.max(
-                0,
-                riderEarning
-            );
-    }
-
-    const deliveries =
-        getDeliveries();
-
-    const now =
-        new Date();
-
-    if (editingDeliveryId) {
-        const index =
-            deliveries.findIndex(
-                item =>
-                    item.id ===
-                    editingDeliveryId
-            );
-
-        if (index === -1) {
-            alert(
-                "Delivery not found."
-            );
-            return;
-        }
-
-        const existing =
-            deliveries[index];
-
-        if (!canEditDelivery(existing)) {
-            alert(
-                "You do not have permission to edit this delivery."
-            );
-            return;
-        }
-
-        const oldStatus =
-            existing.status;
-
-        const oldRiderId =
-            existing.riderId;
-
-        const updated = {
-            ...existing,
-
-            customer,
-            phone,
-            pickup,
-            destination,
-            package:
-                packageDescription,
-
-            amount,
-
-            riderId,
-
-            status,
-
-            notes,
-
-            updatedAt:
-                now.toISOString()
-        };
-
-        /*
-         * Only Super Admin can change
-         * rider earnings.
-         */
-        if (user.role === "super_admin") {
-            updated.riderEarning =
-                riderEarning;
-        } else {
-            updated.riderEarning =
-                existing.riderEarning || 0;
-        }
-
-        if (!Array.isArray(updated.history)) {
-            updated.history = [];
-        }
-
-        if (oldStatus !== status) {
-            updated.history.push({
-                status,
-                time:
-                    now.toISOString(),
-                updatedBy:
-                    user.id
-            });
-        }
-
-        if (oldRiderId !== riderId) {
-            updated.history.push({
-                status:
-                    `Rider assigned: ${getRiderName(riderId)}`,
-                time:
-                    now.toISOString(),
-                updatedBy:
-                    user.id
-            });
-        }
-
-        if (
-            status === "Delivered" &&
-            oldStatus !== "Delivered"
-        ) {
-            updated.deliveredAt =
-                now.toISOString();
-        }
-
-        deliveries[index] =
-            updated;
-
-        saveDeliveries(
-            deliveries
-        );
-
-        alert(
-            "Delivery updated successfully."
-        );
-    } else {
-        const nextNumber =
-            getNextDeliveryNumber();
-
-        const delivery = {
-            id:
-                `BR-${nextNumber}`,
-
-            customer,
-            phone,
-
-            pickup,
-            destination,
-
-            package:
-                packageDescription,
-
-            amount,
-
-            riderEarning,
-
-            riderId,
-
-            status,
-
-            notes,
-
-            createdAt:
-                now.toISOString(),
-
-            updatedAt:
-                now.toISOString(),
-
-            deliveredAt:
-                status === "Delivered"
-                    ? now.toISOString()
-                    : "",
-
-            history: [
-                {
-                    status,
-                    time:
-                        now.toISOString(),
-                    updatedBy:
-                        user.id
                 }
-            ]
-        };
-
-        deliveries.push(
-            delivery
-        );
-
-        saveDeliveries(
-            deliveries
-        );
-
-        alert(
-            "Delivery created successfully."
-        );
+            );
     }
 
-    closeDeliveryModal();
-
-    refreshAllDeliveryViews();
-}
-
-
-/* =========================================================
-   NEXT DELIVERY NUMBER
-   ========================================================= */
-
-function getNextDeliveryNumber() {
-    const deliveries =
-        getDeliveries();
-
-    let highest =
-        10478;
-
-    deliveries.forEach(
-        delivery => {
-            const match =
-                String(
-                    delivery.id || ""
-                ).match(
-                    /^BR-(\d+)$/
-                );
-
-            if (match) {
-                highest =
-                    Math.max(
-                        highest,
-                        Number(match[1])
-                    );
-            }
-        }
-    );
-
-    return highest + 1;
-}
-
-
-/* =========================================================
-   UPDATE DELIVERY STATUS
-   ========================================================= */
-
-function updateDeliveryStatus(
-    deliveryId,
-    newStatus
-) {
-    const deliveries =
-        getDeliveries();
-
-    const index =
-        deliveries.findIndex(
-            delivery =>
-                delivery.id ===
-                deliveryId
-        );
-
-    if (index === -1) {
-        alert(
-            "Delivery not found."
-        );
-        return;
-    }
-
-    const delivery =
-        deliveries[index];
-
-    if (!canUpdateDeliveryStatus(delivery)) {
-        alert(
-            "You do not have permission to update this delivery."
-        );
-        return;
-    }
-
-    const oldStatus =
-        delivery.status;
-
-    const now =
-        new Date();
-
-    delivery.status =
-        newStatus;
-
-    delivery.updatedAt =
-        now.toISOString();
-
-    if (!Array.isArray(delivery.history)) {
-        delivery.history = [];
-    }
-
-    if (oldStatus !== newStatus) {
-        delivery.history.push({
-            status: newStatus,
-            time:
-                now.toISOString(),
-            updatedBy:
-                getCurrentUser()?.id || ""
-        });
-    }
 
     if (
-        newStatus === "Delivered" &&
-        oldStatus !== "Delivered"
+        deliveryFilter !== "All"
     ) {
-        delivery.deliveredAt =
-            now.toISOString();
+
+        records =
+            records.filter(
+                function (delivery) {
+
+                    return (
+                        delivery.status ===
+                        deliveryFilter
+                    );
+
+                }
+            );
     }
 
-    saveDeliveries(
-        deliveries
-    );
 
-    refreshAllDeliveryViews();
+    records =
+        records
+            .slice()
+            .reverse();
+
+
+    rows.innerHTML =
+        deliveryRows(records);
+
+
+    updateDeliveryTabs();
 }
 
 
-/* =========================================================
-   DASHBOARD STATISTICS
-   ========================================================= */
+/* =====================================================
+   DELIVERY FILTER
+===================================================== */
 
-function updateDashboardStats() {
+function setDeliveryFilter(
+    filter,
+    button
+) {
+
+    deliveryFilter =
+        filter;
+
+
+    document
+        .querySelectorAll(
+            "#deliveries .tabs button"
+        )
+        .forEach(
+            function (item) {
+
+                item.classList.remove(
+                    "selected"
+                );
+
+            }
+        );
+
+
+    if (button) {
+
+        button.classList.add(
+            "selected"
+        );
+
+    }
+
+
+    renderDeliveries();
+}
+
+
+function updateDeliveryTabs() {
+
     const deliveries =
         getVisibleDeliveries();
+
+
+    const counts = {
+
+        All:
+            deliveries.length,
+
+        Pending:
+            0,
+
+        Assigned:
+            0,
+
+        "Picked Up":
+            0,
+
+        "In Transit":
+            0,
+
+        Delivered:
+            0
+
+    };
+
+
+    deliveries.forEach(
+        function (delivery) {
+
+            if (
+                Object.prototype.hasOwnProperty.call(
+                    counts,
+                    delivery.status
+                )
+            ) {
+
+                counts[
+                    delivery.status
+                ]++;
+
+            }
+
+        }
+    );
+
+
+    const buttons =
+        document.querySelectorAll(
+            "#deliveries .tabs button"
+        );
+
+
+    const labels = [
+
+        "All",
+        "Pending",
+        "Assigned",
+        "Picked Up",
+        "In Transit",
+        "Delivered"
+
+    ];
+
+
+    buttons.forEach(
+        function (button, index) {
+
+            const label =
+                labels[index];
+
+
+            if (label) {
+
+                button.textContent =
+                    label +
+                    " " +
+                    counts[label];
+
+            }
+
+        }
+    );
+}
+
+
+/* =====================================================
+   RECENT DELIVERIES
+===================================================== */
+
+function renderRecentDeliveries() {
+
+    const container =
+        document.getElementById(
+            "recent"
+        );
+
+
+    if (!container) {
+        return;
+    }
+
+
+    const deliveries =
+        getVisibleDeliveries()
+            .slice()
+            .reverse()
+            .slice(0, 5);
+
+
+    if (!deliveries.length) {
+
+        container.innerHTML = `
+
+            <tr>
+
+                <td colspan="8">
+                    No deliveries yet.
+                </td>
+
+            </tr>
+
+        `;
+
+        return;
+    }
+
+
+    container.innerHTML =
+        deliveryRows(
+            deliveries
+        );
+}
+
+
+/* =====================================================
+   DASHBOARD STATS
+===================================================== */
+
+function updateDashboardStats() {
+
+    const deliveries =
+        getVisibleDeliveries();
+
 
     const total =
         deliveries.length;
 
-    const delivered =
-        deliveries.filter(
-            item =>
-                item.status ===
-                "Delivered"
-        ).length;
 
     const inTransit =
         deliveries.filter(
-            item =>
-                item.status ===
-                    "In Transit" ||
-                item.status ===
-                    "Picked Up"
+            function (item) {
+
+                return (
+                    item.status ===
+                    "In Transit"
+                );
+
+            }
         ).length;
+
+
+    const delivered =
+        deliveries.filter(
+            function (item) {
+
+                return (
+                    item.status ===
+                    "Delivered"
+                );
+
+            }
+        ).length;
+
 
     const pending =
         deliveries.filter(
-            item =>
-                item.status ===
-                "Pending"
+            function (item) {
+
+                return (
+                    item.status ===
+                    "Pending" ||
+                    item.status ===
+                    "Assigned" ||
+                    item.status ===
+                    "Picked Up"
+                );
+
+            }
         ).length;
+
 
     const totalElement =
         document.getElementById(
             "totalDeliveriesStat"
         );
 
-    const inTransitElement =
+    const transitElement =
         document.getElementById(
             "inTransitStat"
         );
@@ -2920,13 +4073,14 @@ function updateDashboardStats() {
             "pendingStat"
         );
 
+
     if (totalElement) {
         totalElement.textContent =
             total;
     }
 
-    if (inTransitElement) {
-        inTransitElement.textContent =
+    if (transitElement) {
+        transitElement.textContent =
             inTransit;
     }
 
@@ -2940,1238 +4094,2699 @@ function updateDashboardStats() {
             pending;
     }
 
-    updateCharts(
-        deliveries
-    );
-}
+
+    const donutTotal =
+        document.getElementById(
+            "donutTotal"
+        );
 
 
-/* =========================================================
-   CHARTS
-   ========================================================= */
+    if (donutTotal) {
 
-function updateCharts(deliveries) {
-    if (
-        typeof Chart === "undefined"
-    ) {
-        return;
+        donutTotal.innerHTML =
+            total +
+            "<small>Total</small>";
+
     }
 
-    const donutCanvas =
+
+    const deliveredPercent =
+        total
+            ? (
+                delivered /
+                total *
+                100
+            ).toFixed(1)
+            : 0;
+
+
+    const transitPercent =
+        total
+            ? (
+                inTransit /
+                total *
+                100
+            ).toFixed(1)
+            : 0;
+
+
+    const pendingPercent =
+        total
+            ? (
+                pending /
+                total *
+                100
+            ).toFixed(1)
+            : 0;
+
+
+    const deliveredPercentElement =
         document.getElementById(
-            "deliveryDonut"
+            "deliveredPercent"
         );
 
-    const barCanvas =
+    const transitPercentElement =
         document.getElementById(
-            "deliveryBar"
+            "transitPercent"
         );
 
-    if (donutCanvas) {
-        const data = [
-            deliveries.filter(
-                d => d.status === "Pending"
-            ).length,
+    const pendingPercentElement =
+        document.getElementById(
+            "pendingPercent"
+        );
 
-            deliveries.filter(
-                d => d.status === "Assigned"
-            ).length,
 
-            deliveries.filter(
-                d => d.status === "Picked Up"
-            ).length,
+    if (deliveredPercentElement) {
+        deliveredPercentElement.textContent =
+            deliveredPercent + "%";
+    }
 
-            deliveries.filter(
-                d => d.status === "In Transit"
-            ).length,
+    if (transitPercentElement) {
+        transitPercentElement.textContent =
+            transitPercent + "%";
+    }
 
-            deliveries.filter(
-                d => d.status === "Delivered"
-            ).length
+    if (pendingPercentElement) {
+        pendingPercentElement.textContent =
+            pendingPercent + "%";
+    }
+
+
+    if (deliveryDonut) {
+
+        deliveryDonut.data.datasets[0].data = [
+
+            delivered,
+            inTransit,
+            pending
+
         ];
 
-        if (deliveryDonut) {
-            deliveryDonut.destroy();
-        }
+        deliveryDonut.update();
 
-        deliveryDonut =
-            new Chart(
-                donutCanvas,
-                {
-                    type: "doughnut",
-
-                    data: {
-                        labels: [
-                            "Pending",
-                            "Assigned",
-                            "Picked Up",
-                            "In Transit",
-                            "Delivered"
-                        ],
-
-                        datasets: [
-                            {
-                                data
-                            }
-                        ]
-                    },
-
-                    options: {
-                        responsive: true,
-                        maintainAspectRatio: false
-                    }
-                }
-            );
-
-        window.deliveryDonut =
-            deliveryDonut;
     }
 
-    if (barCanvas) {
-        const dailyData =
-            getLastSevenDaysDeliveryData(
-                deliveries
-            );
-
-        if (deliveryBar) {
-            deliveryBar.destroy();
-        }
-
-        deliveryBar =
-            new Chart(
-                barCanvas,
-                {
-                    type: "bar",
-
-                    data: {
-                        labels:
-                            dailyData.labels,
-
-                        datasets: [
-                            {
-                                label:
-                                    "Deliveries",
-
-                                data:
-                                    dailyData.data
-                            }
-                        ]
-                    },
-
-                    options: {
-                        responsive: true,
-                        maintainAspectRatio: false
-                    }
-                }
-            );
-
-        window.deliveryBar =
-            deliveryBar;
-    }
-}
-
-function getLastSevenDaysDeliveryData(
-    deliveries
-) {
-    const labels = [];
-    const data = [];
-
-    for (
-        let i = 6;
-        i >= 0;
-        i--
-    ) {
-        const date =
-            new Date();
-
-        date.setDate(
-            date.getDate() - i
-        );
-
-        const key =
-            date.toISOString()
-                .slice(0, 10);
-
-        labels.push(
-            date.toLocaleDateString(
-                "en-NG",
-                {
-                    weekday: "short"
-                }
-            )
-        );
-
-        const count =
-            deliveries.filter(
-                delivery => {
-                    const dateValue =
-                        delivery.updatedAt ||
-                        delivery.createdAt;
-
-                    if (!dateValue) {
-                        return false;
-                    }
-
-                    return (
-                        new Date(
-                            dateValue
-                        )
-                            .toISOString()
-                            .slice(0, 10) ===
-                        key
-                    );
-                }
-            ).length;
-
-        data.push(count);
-    }
-
-    return {
-        labels,
-        data
-    };
-}
-
-
-/* =========================================================
-   CUSTOMERS
-   ========================================================= */
-
-function renderCustomers() {
-    const container =
-        document.getElementById(
-            "customerList"
-        );
-
-    if (!container) return;
-
-    const deliveries =
-        getVisibleDeliveries();
-
-    const customers = {};
-
-    deliveries.forEach(
-        delivery => {
-            const key =
-                delivery.phone ||
-                delivery.customer ||
-                "Unknown";
-
-            if (!customers[key]) {
-                customers[key] = {
-                    name:
-                        delivery.customer ||
-                        "Unknown",
-                    phone:
-                        delivery.phone ||
-                        "-",
-                    orders: 0
-                };
-            }
-
-            customers[key].orders++;
-        }
-    );
-
-    const entries =
-        Object.values(
-            customers
-        );
-
-    if (!entries.length) {
-        container.innerHTML = `
-            <p>No customers yet.</p>
-        `;
-        return;
-    }
-
-    container.innerHTML =
-        entries.map(
-            customer => `
-                <div class="customer-item">
-
-                    <strong>
-                        ${escapeHtml(
-                            customer.name
-                        )}
-                    </strong>
-
-                    <span>
-                        ${escapeHtml(
-                            customer.phone
-                        )}
-                    </span>
-
-                    <span>
-                        ${customer.orders}
-                        order(s)
-                    </span>
-
-                </div>
-            `
-        ).join("");
-}
-
-
-/* =========================================================
-   RIDERS / DRIVERS
-   ========================================================= */
-
-function renderDrivers() {
-    const container =
-        document.getElementById(
-            "driverList"
-        );
-
-    if (!container) return;
-
-    const riders =
-        getRiders();
-
-    if (!riders.length) {
-        container.innerHTML = `
-            <p>No riders registered.</p>
-        `;
-        return;
-    }
-
-    container.innerHTML =
-        riders.map(
-            rider => {
-                const financials =
-                    getRiderWeeklyFinancials(
-                        rider.id
-                    );
-
-                return `
-                    <div class="driver-item">
-
-                        <strong>
-                            ${escapeHtml(
-                                `${rider.firstName || ""} ${rider.lastName || ""}`.trim()
-                            )}
-                        </strong>
-
-                        <span>
-                            ${escapeHtml(
-                                rider.id
-                            )}
-                        </span>
-
-                        <span>
-                            ${escapeHtml(
-                                rider.phone
-                            )}
-                        </span>
-
-                        <span>
-                            Weekly:
-                            ${formatCurrency(
-                                financials.netEarnings
-                            )}
-                        </span>
-
-                    </div>
-                `;
-            }
-        ).join("");
-}
-
-
-/* =========================================================
-   TRACKING
-   ========================================================= */
-
-function track() {
-    const input =
-        document.getElementById(
-            "trackId"
-        );
-
-    const result =
-        document.getElementById(
-            "trackingResult"
-        );
-
-    if (!input || !result) {
-        return;
-    }
-
-    const id =
-        input.value
-            .trim()
-            .toUpperCase();
-
-    if (!id) {
-        result.innerHTML = `
-            <p>
-                Enter a delivery ID.
-            </p>
-        `;
-        return;
-    }
-
-    const delivery =
-        getDeliveries().find(
-            item =>
-                String(
-                    item.id
-                ).toUpperCase() ===
-                id
-        );
-
-    if (!delivery) {
-        result.innerHTML = `
-            <p>
-                Delivery not found.
-            </p>
-        `;
-        return;
-    }
-
-    if (
-        isRider() &&
-        delivery.riderId !==
-            getCurrentUser().id
-    ) {
-        result.innerHTML = `
-            <p>
-                You do not have access to this delivery.
-            </p>
-        `;
-        return;
-    }
-
-    const history =
-        Array.isArray(
-            delivery.history
-        )
-            ? delivery.history
-            : [];
-
-    result.innerHTML = `
-        <div class="tracking-card">
-
-            <h3>
-                ${escapeHtml(
-                    delivery.id
-                )}
-            </h3>
-
-            <p>
-                <strong>Customer:</strong>
-                ${escapeHtml(
-                    delivery.customer || "-"
-                )}
-            </p>
-
-            <p>
-                <strong>Status:</strong>
-                ${escapeHtml(
-                    delivery.status || "-"
-                )}
-            </p>
-
-            <p>
-                <strong>Pickup:</strong>
-                ${escapeHtml(
-                    delivery.pickup || "-"
-                )}
-            </p>
-
-            <p>
-                <strong>Destination:</strong>
-                ${escapeHtml(
-                    delivery.destination || "-"
-                )}
-            </p>
-
-            <p>
-                <strong>Rider:</strong>
-                ${escapeHtml(
-                    getRiderName(
-                        delivery.riderId
-                    )
-                )}
-            </p>
-
-            <h4>
-                Delivery History
-            </h4>
-
-            <div class="tracking-history">
-
-                ${
-                    history.length
-                        ? history.map(
-                            item => `
-                                <div>
-                                    <strong>
-                                        ${escapeHtml(
-                                            item.status
-                                        )}
-                                    </strong>
-
-                                    <span>
-                                        ${formatDateTime(
-                                            item.time
-                                        )}
-                                    </span>
-                                </div>
-                            `
-                        ).join("")
-                        : `
-                            <p>
-                                No history available.
-                            </p>
-                        `
-                }
-
-            </div>
-
-        </div>
-    `;
-}
-
-
-/* =========================================================
-   ANALYTICS
-   ========================================================= */
-
-function renderAnalytics() {
-    if (!isSuperAdmin()) {
-        return;
-    }
-
-    const deliveries =
-        getDeliveries();
-
-    const delivered =
-        deliveries.filter(
-            d =>
-                d.status ===
-                "Delivered"
-        ).length;
-
-    const total =
-        deliveries.length;
-
-    const successRate =
-        total > 0
-            ? Math.round(
-                (
-                    delivered /
-                    total
-                ) * 100
-            )
-            : 0;
 
     const revenue =
         deliveries.reduce(
-            (sum, delivery) =>
-                sum +
-                Number(
-                    delivery.amount || 0
-                ),
+            function (total, item) {
+
+                return (
+                    total +
+                    Number(
+                        item.amount || 0
+                    )
+                );
+
+            },
             0
         );
 
-    const successElement =
-        document.getElementById(
-            "successRate"
-        );
 
     const revenueElement =
         document.getElementById(
             "revenueStat"
         );
 
-    if (successElement) {
-        successElement.textContent =
-            `${successRate}%`;
-    }
 
     if (revenueElement) {
+
         revenueElement.textContent =
-            formatCurrency(
-                revenue
-            );
+            "₦" +
+            formatMoney(revenue);
+
     }
-}
 
 
-/* =========================================================
-   PAGE NAVIGATION
-   ========================================================= */
+    if (deliveryBar) {
 
-function openPage(page) {
-    const pages =
-        document.querySelectorAll(
-            ".page, section[data-page-section]"
-        );
+        deliveryBar.data.datasets[0].data = [
 
-    pages.forEach(
-        element => {
-            const id =
-                element.id;
+            revenue / 1000000
 
-            element.style.display =
-                id === page
-                    ? ""
-                    : "none";
-        }
+        ];
+
+        deliveryBar.update();
+
+    }
+
+
+    updateSuccessRate(
+        deliveries
     );
+}
 
-    document
-        .querySelectorAll(
-            "[data-page]"
-        )
-        .forEach(
-            nav => {
-                nav.classList.toggle(
-                    "active",
-                    nav.dataset.page ===
-                        page
+
+function updateSuccessRate(
+    deliveries
+) {
+
+    const completed =
+        deliveries.filter(
+            function (item) {
+
+                return (
+                    item.status ===
+                    "Delivered"
                 );
+
             }
+        ).length;
+
+
+    const success =
+        deliveries.length
+            ? (
+                completed /
+                deliveries.length *
+                100
+            ).toFixed(1)
+            : 0;
+
+
+    const element =
+        document.getElementById(
+            "successRate"
         );
 
-    const pageInfo = {
-        dashboard: {
-            title:
-                isSuperAdmin()
-                    ? "Super Admin Dashboard"
-                    : "Rider Dashboard",
 
-            subtitle:
-                "Overview of your delivery operations"
-        },
+    if (element) {
 
-        deliveries: {
-            title:
-                "Deliveries",
+        element.textContent =
+            success + "%";
 
-            subtitle:
-                "Manage delivery orders"
-        },
-
-        tracking: {
-            title:
-                "Tracking",
-
-            subtitle:
-                "Track delivery status"
-        },
-
-        customers: {
-            title:
-                "Customers",
-
-            subtitle:
-                "View customer information"
-        },
-
-        drivers: {
-            title:
-                "Riders",
-
-            subtitle:
-                "Manage registered riders"
-        },
-
-        analytics: {
-            title:
-                "Analytics",
-
-            subtitle:
-                "View delivery performance"
-        },
-
-        attendance: {
-            title:
-                "Attendance",
-
-            subtitle:
-                "Monitor rider attendance"
-        },
-
-        settings: {
-            title:
-                "Settings",
-
-            subtitle:
-                "System settings"
-        }
-    };
-
-    const info =
-        pageInfo[page];
-
-    if (info) {
-        const title =
-            document.getElementById(
-                "pageTitle"
-            );
-
-        const subtitle =
-            document.getElementById(
-                "pageSubtitle"
-            );
-
-        if (title) {
-            title.textContent =
-                info.title;
-        }
-
-        if (subtitle) {
-            subtitle.textContent =
-                info.subtitle;
-        }
-    }
-
-    if (page === "attendance") {
-        renderAttendancePage();
-    }
-
-    if (page === "analytics") {
-        renderAnalytics();
-    }
-
-    if (page === "dashboard") {
-        renderRiderAttendanceCard();
-        renderRiderEarningsCard();
-        updateDashboardStats();
     }
 }
 
 
-/* =========================================================
-   REFRESH EVERYTHING
-   ========================================================= */
+/* =====================================================
+   REFRESH
+===================================================== */
 
 function refreshAllDeliveryViews() {
+
     renderDeliveries();
+
     renderRecentDeliveries();
+
     updateDashboardStats();
+
     renderCustomers();
+
     renderDrivers();
-    renderAnalytics();
-    renderRiderAttendanceCard();
+
     renderRiderEarningsCard();
+
     renderAttendancePage();
+
+    renderRiderAttendanceCard();
 }
 
 
-/* =========================================================
-   SEARCH
-   ========================================================= */
+/* =====================================================
+   RIDER OPTIONS
+===================================================== */
 
-function setupSearch() {
-    const search =
+function populateRiderOptions(
+    selectedId,
+    lockToCurrentRider
+) {
+
+    const select =
         document.getElementById(
-            "search"
+            "deliveryRider"
         );
 
-    if (!search) return;
 
-    search.addEventListener(
-        "input",
-        renderDeliveries
-    );
-}
+    if (!select) {
+        return;
+    }
 
 
-/* =========================================================
-   MODAL CLICK OUTSIDE
-   ========================================================= */
+    const riders =
+        getRiders();
 
-function setupModalEvents() {
-    const modal =
-        document.getElementById(
-            "deliveryModal"
-        );
 
-    if (!modal) return;
+    const user =
+        getCurrentUser();
 
-    modal.addEventListener(
-        "click",
-        event => {
+
+    select.innerHTML = `
+
+        <option value="">
+            Unassigned
+        </option>
+
+    `;
+
+
+    riders.forEach(
+        function (rider) {
+
+            const option =
+                document.createElement(
+                    "option"
+                );
+
+
+            option.value =
+                rider.id;
+
+
+            option.textContent =
+                rider.firstName +
+                " " +
+                rider.lastName +
+                " (" +
+                rider.id +
+                ")";
+
+
             if (
-                event.target ===
-                modal
+                selectedId &&
+                selectedId ===
+                rider.id
             ) {
-                closeDeliveryModal();
+
+                option.selected =
+                    true;
+
             }
+
+
+            select.appendChild(
+                option
+            );
+
         }
     );
+
+
+    if (
+        lockToCurrentRider &&
+        user &&
+        user.role === "rider"
+    ) {
+
+        select.value =
+            user.id;
+
+        select.disabled =
+            true;
+
+    } else {
+
+        select.disabled =
+            false;
+
+    }
 }
 
 
-/* =========================================================
-   FORM SUBMISSION
-   ========================================================= */
+/* =====================================================
+   OPEN NEW DELIVERY
+===================================================== */
 
-function setupDeliveryForm() {
+function openNewDelivery() {
+
+    editingDeliveryId =
+        null;
+
+
+    const modalTitle =
+        document.getElementById(
+            "modalTitle"
+        );
+
+    const modalDescription =
+        document.getElementById(
+            "modalDescription"
+        );
+
+    const saveButton =
+        document.getElementById(
+            "saveDeliveryButton"
+        );
+
+    const editId =
+        document.getElementById(
+            "deliveryEditId"
+        );
+
     const form =
         document.getElementById(
             "form"
         );
 
-    if (!form) return;
 
-    form.addEventListener(
-        "submit",
-        saveDelivery
-    );
-}
-
-
-/* =========================================================
-   NAVIGATION EVENT SETUP
-   ========================================================= */
-
-function setupNavigation() {
-    document
-        .querySelectorAll(
-            "[data-page]"
-        )
-        .forEach(
-            element => {
-                element.addEventListener(
-                    "click",
-                    event => {
-                        event.preventDefault();
-
-                        const page =
-                            element.dataset.page;
-
-                        if (!page) {
-                            return;
-                        }
-
-                        openPage(page);
-                    }
-                );
-            }
-        );
-}
-
-
-/* =========================================================
-   DELIVERY FILTER BUTTONS
-   ========================================================= */
-
-function setupDeliveryFilters() {
-    document
-        .querySelectorAll(
-            "[data-delivery-filter]"
-        )
-        .forEach(
-            button => {
-                button.addEventListener(
-                    "click",
-                    () => {
-                        setDeliveryFilter(
-                            button.dataset
-                                .deliveryFilter
-                        );
-                    }
-                );
-            }
-        );
-}
-
-
-/* =========================================================
-   CLEAN OLD DEMO DATA
-   =========================================================
-
-   IMPORTANT:
-   This removes the four old sample deliveries
-   if they still exist in the browser's localStorage.
-
-   It does NOT remove real deliveries.
-
-   ========================================================= */
-
-function removeOldDemoDeliveriesOnce() {
-    const deliveries =
-        getDeliveries();
-
-    const demoIds = [
-        "BR-10482",
-        "BR-10481",
-        "BR-10480",
-        "BR-10479"
-    ];
-
-    const cleaned =
-        deliveries.filter(
-            delivery =>
-                !demoIds.includes(
-                    delivery.id
-                )
-        );
-
-    if (
-        cleaned.length !==
-        deliveries.length
-    ) {
-        saveDeliveries(
-            cleaned
-        );
+    if (modalTitle) {
+        modalTitle.textContent =
+            "Create New Delivery";
     }
-}
 
-
-/* =========================================================
-   MIGRATE DELIVERY DATA
-   ========================================================= */
-
-function migrateDeliveryData() {
-    const deliveries =
-        getDeliveries();
-
-    let changed = false;
-
-    const migrated =
-        deliveries.map(
-            delivery => {
-                const updated = {
-                    ...delivery
-                };
-
-                if (
-                    typeof updated.riderEarning !==
-                    "number"
-                ) {
-                    updated.riderEarning =
-                        Number(
-                            updated.riderEarning ||
-                            0
-                        );
-
-                    changed = true;
-                }
-
-                /*
-                 * Older delivered orders may not
-                 * have deliveredAt.
-                 *
-                 * Use the previous updatedAt /
-                 * createdAt as a fallback.
-                 */
-                if (
-                    updated.status ===
-                        "Delivered" &&
-                    !updated.deliveredAt
-                ) {
-                    updated.deliveredAt =
-                        updated.updatedAt ||
-                        updated.createdAt ||
-                        "";
-
-                    changed = true;
-                }
-
-                if (
-                    !Array.isArray(
-                        updated.history
-                    )
-                ) {
-                    updated.history = [];
-
-                    changed = true;
-                }
-
-                return updated;
-            }
-        );
-
-    if (changed) {
-        saveDeliveries(
-            migrated
-        );
+    if (modalDescription) {
+        modalDescription.textContent =
+            "Log a real delivery into the system.";
     }
-}
 
-
-/* =========================================================
-   MIGRATE ATTENDANCE DATA
-   ========================================================= */
-
-function migrateAttendanceData() {
-    const records =
-        getAttendance();
-
-    let changed = false;
-
-    const migrated =
-        records.map(
-            record => {
-                const updated = {
-                    ...record
-                };
-
-                if (
-                    updated.checkIn &&
-                    !updated.checkInTimestamp
-                ) {
-                    /*
-                     * Older records may only contain
-                     * the date/time strings. We keep
-                     * them intact and use 0 duration
-                     * until a proper timestamp exists.
-                     */
-                    updated.durationMinutes =
-                        Number(
-                            updated.durationMinutes ||
-                            0
-                        );
-
-                    changed = true;
-                }
-
-                if (
-                    updated.checkOut &&
-                    !updated.checkOutTimestamp
-                ) {
-                    updated.durationMinutes =
-                        Number(
-                            updated.durationMinutes ||
-                            0
-                        );
-
-                    changed = true;
-                }
-
-                if (
-                    updated.checkInFee ===
-                    undefined
-                ) {
-                    updated.checkInFee =
-                        DAILY_CHECK_IN_FEE;
-
-                    updated.feeApplied =
-                        true;
-
-                    changed = true;
-                }
-
-                return updated;
-            }
-        );
-
-    if (changed) {
-        saveAttendance(
-            migrated
-        );
+    if (saveButton) {
+        saveButton.textContent =
+            "Create Delivery";
     }
-}
 
+    if (editId) {
+        editId.value = "";
+    }
 
-/* =========================================================
-   SESSION RESTORE
-   ========================================================= */
+    if (form) {
+        form.reset();
+    }
 
-function restoreSession() {
-    const loggedIn =
-        sessionStorage.getItem(
-            "blackRabbitLoggedIn"
-        );
 
     const user =
         getCurrentUser();
 
-    const authScreen =
+
+    const isRider =
+        user &&
+        user.role === "rider";
+
+
+    populateRiderOptions(
+        isRider
+            ? user.id
+            : "",
+        isRider
+    );
+
+
+    const earning =
         document.getElementById(
-            "authScreen"
+            "deliveryRiderEarning"
         );
 
-    const mainApp =
+
+    if (earning) {
+        earning.disabled =
+            isRider;
+    }
+
+
+    const status =
         document.getElementById(
-            "mainApp"
+            "deliveryStatus"
         );
 
-    if (
-        loggedIn === "true" &&
-        user
-    ) {
-        currentRole =
-            user.role === "super_admin"
-                ? "admin"
-                : "rider";
 
-        if (authScreen) {
-            authScreen.style.display =
-                "none";
-        }
+    if (status) {
 
-        if (mainApp) {
-            mainApp.style.display =
-                "block";
-        }
+        status.value =
+            isRider
+                ? "Assigned"
+                : "Pending";
 
-        updateUserInterface();
-        configureRoleInterface();
-        refreshAllDeliveryViews();
-        openPage("dashboard");
-    } else {
-        if (authScreen) {
-            authScreen.style.display =
-                "flex";
-        }
+    }
 
-        if (mainApp) {
-            mainApp.style.display =
-                "none";
-        }
 
-        selectRole("rider");
+    const history =
+        document.getElementById(
+            "deliveryHistory"
+        );
+
+
+    if (history) {
+
+        history.innerHTML = "";
+
+        history.classList.add(
+            "hidden"
+        );
+
+    }
+
+
+    const modal =
+        document.getElementById(
+            "modal"
+        );
+
+
+    if (modal) {
+        modal.style.display =
+            "flex";
     }
 }
 
 
-/* =========================================================
-   KEYBOARD SUPPORT
-   ========================================================= */
+/* =====================================================
+   OPEN EDIT DELIVERY
+===================================================== */
 
-document.addEventListener(
-    "keydown",
-    event => {
-        if (
-            event.key === "Escape"
-        ) {
-            closeDeliveryModal();
-        }
+function openEditDelivery(id) {
+
+    const delivery =
+        getDeliveries().find(
+            function (item) {
+
+                return item.id === id;
+
+            }
+        );
+
+
+    if (!delivery) {
+
+        alert(
+            "Delivery not found."
+        );
+
+        return;
     }
-);
 
 
-/* =========================================================
-   DOM CONTENT LOADED
-   ========================================================= */
+    if (
+        !canEditDelivery(
+            delivery
+        )
+    ) {
+
+        alert(
+            "You do not have permission to update this delivery."
+        );
+
+        return;
+    }
+
+
+    editingDeliveryId =
+        id;
+
+
+    document.getElementById(
+        "modalTitle"
+    ).textContent =
+        "Update Delivery " +
+        delivery.id;
+
+
+    document.getElementById(
+        "modalDescription"
+    ).textContent =
+        "Update delivery details, assignment or status.";
+
+
+    document.getElementById(
+        "saveDeliveryButton"
+    ).textContent =
+        "Save Changes";
+
+
+    document.getElementById(
+        "deliveryEditId"
+    ).value =
+        delivery.id;
+
+
+    document.getElementById(
+        "deliveryCustomer"
+    ).value =
+        delivery.customerName || "";
+
+
+    document.getElementById(
+        "deliveryPhone"
+    ).value =
+        delivery.customerPhone || "";
+
+
+    document.getElementById(
+        "deliveryPickup"
+    ).value =
+        delivery.pickupAddress || "";
+
+
+    document.getElementById(
+        "deliveryDestination"
+    ).value =
+        delivery.destination || "";
+
+
+    document.getElementById(
+        "deliveryPackage"
+    ).value =
+        delivery.packageDescription || "";
+
+
+    document.getElementById(
+        "deliveryAmount"
+    ).value =
+        delivery.amount || "";
+
+
+    document.getElementById(
+        "deliveryRiderEarning"
+    ).value =
+        delivery.riderEarning || "";
+
+
+    document.getElementById(
+        "deliveryStatus"
+    ).value =
+        delivery.status;
+
+
+    document.getElementById(
+        "deliveryNotes"
+    ).value =
+        delivery.notes || "";
+
+
+    const user =
+        getCurrentUser();
+
+
+    populateRiderOptions(
+        delivery.riderId || "",
+        user?.role === "rider"
+    );
+
+
+    const riderSelect =
+        document.getElementById(
+            "deliveryRider"
+        );
+
+
+    const riderEarning =
+        document.getElementById(
+            "deliveryRiderEarning"
+        );
+
+
+    if (
+        user?.role === "rider"
+    ) {
+
+        if (riderSelect) {
+            riderSelect.disabled =
+                true;
+        }
+
+        if (riderEarning) {
+            riderEarning.disabled =
+                true;
+        }
+
+    } else {
+
+        if (riderEarning) {
+            riderEarning.disabled =
+                false;
+        }
+
+    }
+
+
+    renderDeliveryHistory(
+        delivery
+    );
+
+
+    document.getElementById(
+        "modal"
+    ).style.display =
+        "flex";
+}
+
+
+/* =====================================================
+   DELIVERY HISTORY
+===================================================== */
+
+function renderDeliveryHistory(
+    delivery
+) {
+
+    const container =
+        document.getElementById(
+            "deliveryHistory"
+        );
+
+
+    if (!container) {
+        return;
+    }
+
+
+    if (
+        !delivery.history ||
+        !delivery.history.length
+    ) {
+
+        container.innerHTML = "";
+
+        container.classList.add(
+            "hidden"
+        );
+
+        return;
+    }
+
+
+    container.classList.remove(
+        "hidden"
+    );
+
+
+    container.innerHTML = `
+
+        <h3>
+            Delivery History
+        </h3>
+
+        ${
+            delivery.history
+                .slice()
+                .reverse()
+                .map(
+                    function (item) {
+
+                        return `
+
+                            <div class="history-item">
+
+                                <div class="history-dot"></div>
+
+                                <div>
+
+                                    <strong>
+                                        ${escapeHtml(
+                                            item.status
+                                        )}
+                                    </strong>
+
+                                    <small>
+                                        ${escapeHtml(
+                                            formatDateTime(
+                                                item.timestamp
+                                            )
+                                        )}
+                                        ·
+                                        ${escapeHtml(
+                                            item.by ||
+                                            "System"
+                                        )}
+                                    </small>
+
+                                </div>
+
+                            </div>
+
+                        `;
+
+                    }
+                )
+                .join("")
+        }
+
+    `;
+}
+
+
+/* =====================================================
+   DATE TIME FORMAT
+===================================================== */
+
+function formatDateTime(value) {
+
+    if (!value) {
+        return "";
+    }
+
+
+    const date =
+        new Date(value);
+
+
+    if (
+        Number.isNaN(
+            date.getTime()
+        )
+    ) {
+
+        return String(value);
+
+    }
+
+
+    return date.toLocaleString(
+        "en-NG",
+        {
+            dateStyle: "medium",
+            timeStyle: "short"
+        }
+    );
+}
+
+
+/* =====================================================
+   SAVE DELIVERY
+===================================================== */
+
+function saveDelivery(event) {
+
+    event.preventDefault();
+
+
+    const user =
+        getCurrentUser();
+
+
+    if (!user) {
+
+        alert(
+            "Please login first."
+        );
+
+        return;
+    }
+
+
+    const customerName =
+        document.getElementById(
+            "deliveryCustomer"
+        ).value.trim();
+
+
+    const customerPhone =
+        normalizePhone(
+            document.getElementById(
+                "deliveryPhone"
+            ).value
+        );
+
+
+    const pickupAddress =
+        document.getElementById(
+            "deliveryPickup"
+        ).value.trim();
+
+
+    const destination =
+        document.getElementById(
+            "deliveryDestination"
+        ).value.trim();
+
+
+    const packageDescription =
+        document.getElementById(
+            "deliveryPackage"
+        ).value.trim();
+
+
+    const amount =
+        Number(
+            document.getElementById(
+                "deliveryAmount"
+            ).value || 0
+        );
+
+
+    const riderEarning =
+        Number(
+            document.getElementById(
+                "deliveryRiderEarning"
+            ).value || 0
+        );
+
+
+    const notes =
+        document.getElementById(
+            "deliveryNotes"
+        ).value.trim();
+
+
+    const status =
+        document.getElementById(
+            "deliveryStatus"
+        ).value;
+
+
+    const riderSelect =
+        document.getElementById(
+            "deliveryRider"
+        );
+
+
+    const riderId =
+        riderSelect?.value || "";
+
+
+    if (
+        !customerName ||
+        !customerPhone ||
+        !pickupAddress ||
+        !destination
+    ) {
+
+        alert(
+            "Please complete the customer, phone, pickup and destination fields."
+        );
+
+        return;
+    }
+
+
+    if (
+        customerPhone.length !== 11
+    ) {
+
+        alert(
+            "Please enter a valid Nigerian phone number."
+        );
+
+        return;
+    }
+
+
+    let deliveries =
+        getDeliveries();
+
+
+    /* =================================================
+       UPDATE
+    ================================================= */
+
+    if (editingDeliveryId) {
+
+        const index =
+            deliveries.findIndex(
+                function (item) {
+
+                    return (
+                        item.id ===
+                        editingDeliveryId
+                    );
+
+                }
+            );
+
+
+        if (index === -1) {
+
+            alert(
+                "Delivery no longer exists."
+            );
+
+            return;
+        }
+
+
+        const delivery =
+            deliveries[index];
+
+
+        if (
+            !canEditDelivery(
+                delivery
+            )
+        ) {
+
+            alert(
+                "You do not have permission to update this delivery."
+            );
+
+            return;
+        }
+
+
+        const oldStatus =
+            delivery.status;
+
+
+        const oldRider =
+            delivery.riderId;
+
+
+        delivery.customerName =
+            customerName;
+
+        delivery.customerPhone =
+            customerPhone;
+
+        delivery.pickupAddress =
+            pickupAddress;
+
+        delivery.destination =
+            destination;
+
+        delivery.packageDescription =
+            packageDescription;
+
+        delivery.amount =
+            amount;
+
+
+        /*
+           Only Super Admin can set/edit
+           rider earnings.
+        */
+
+        delivery.riderEarning =
+            user.role === "super_admin"
+                ? riderEarning
+                : Number(
+                    delivery.riderEarning ||
+                    0
+                );
+
+
+        delivery.notes =
+            notes;
+
+
+        if (
+            user.role ===
+            "super_admin"
+        ) {
+
+            delivery.riderId =
+                riderId || "";
+
+        } else {
+
+            delivery.riderId =
+                user.id;
+
+        }
+
+
+        delivery.status =
+            status;
+
+
+        delivery.updatedAt =
+            getCurrentTimestamp();
+
+
+        delivery.updatedBy =
+            getUserDisplayName(
+                user
+            );
+
+
+        if (
+            oldStatus !==
+            status
+        ) {
+
+            if (!delivery.history) {
+                delivery.history = [];
+            }
+
+
+            const statusTimestamp =
+                getCurrentTimestamp();
+
+
+            delivery.history.push({
+
+                status,
+
+                timestamp:
+                    statusTimestamp,
+
+                by:
+                    getUserDisplayName(
+                        user
+                    )
+
+            });
+
+
+            if (
+                status ===
+                "Delivered"
+            ) {
+
+                delivery.deliveredAt =
+                    statusTimestamp;
+
+            }
+
+
+            if (
+                oldStatus ===
+                "Delivered" &&
+                status !==
+                "Delivered"
+            ) {
+
+                delivery.deliveredAt =
+                    "";
+
+            }
+
+        }
+
+
+        if (
+            oldRider !==
+            delivery.riderId &&
+            user.role ===
+            "super_admin"
+        ) {
+
+            if (!delivery.history) {
+                delivery.history = [];
+            }
+
+
+            delivery.history.push({
+
+                status:
+                    "Assigned to " +
+                    getRiderName(
+                        delivery.riderId
+                    ),
+
+                timestamp:
+                    getCurrentTimestamp(),
+
+                by:
+                    getUserDisplayName(
+                        user
+                    )
+
+            });
+
+        }
+
+
+        saveDeliveries(
+            deliveries
+        );
+
+
+        alert(
+            "Delivery " +
+            delivery.id +
+            " updated successfully."
+        );
+
+    }
+
+
+    /* =================================================
+       CREATE
+    ================================================= */
+
+    else {
+
+        let assignedRider =
+            riderId || "";
+
+
+        if (
+            user.role ===
+            "rider"
+        ) {
+
+            assignedRider =
+                user.id;
+
+        }
+
+
+        let finalStatus =
+            status;
+
+
+        if (
+            user.role ===
+            "rider" &&
+            finalStatus ===
+            "Pending"
+        ) {
+
+            finalStatus =
+                "Assigned";
+
+        }
+
+
+        const now =
+            getCurrentTimestamp();
+
+
+        const delivery = {
+
+            id:
+                generateDeliveryId(),
+
+            customerName,
+
+            customerPhone,
+
+            pickupAddress,
+
+            destination,
+
+            packageDescription,
+
+            amount,
+
+            /*
+               Rider cannot assign own
+               earnings.
+            */
+
+            riderEarning:
+                user.role ===
+                "super_admin"
+                    ? riderEarning
+                    : 0,
+
+            notes,
+
+            riderId:
+                assignedRider,
+
+            status:
+                finalStatus,
+
+            createdAt:
+                now,
+
+            updatedAt:
+                now,
+
+            deliveredAt:
+                finalStatus ===
+                "Delivered"
+                    ? now
+                    : "",
+
+            createdBy:
+                getUserDisplayName(
+                    user
+                ),
+
+            updatedBy:
+                getUserDisplayName(
+                    user
+                ),
+
+            history: [
+
+                {
+
+                    status:
+                        finalStatus,
+
+                    timestamp:
+                        now,
+
+                    by:
+                        getUserDisplayName(
+                            user
+                        )
+
+                }
+
+            ]
+
+        };
+
+
+        deliveries.push(
+            delivery
+        );
+
+
+        saveDeliveries(
+            deliveries
+        );
+
+
+        alert(
+            "Delivery " +
+            delivery.id +
+            " created successfully."
+        );
+
+    }
+
+
+    closeDeliveryModal();
+
+    refreshAllDeliveryViews();
+}
+
+
+/* =====================================================
+   USER DISPLAY NAME
+===================================================== */
+
+function getUserDisplayName(user) {
+
+    if (!user) {
+        return "System";
+    }
+
+
+    return (
+        user.firstName ||
+        "User"
+    ) +
+    " " +
+    (
+        user.lastName ||
+        ""
+    );
+}
+
+
+/* =====================================================
+   CLOSE MODAL
+===================================================== */
+
+function closeDeliveryModal() {
+
+    const modal =
+        document.getElementById(
+            "modal"
+        );
+
+
+    const form =
+        document.getElementById(
+            "form"
+        );
+
+
+    const history =
+        document.getElementById(
+            "deliveryHistory"
+        );
+
+
+    if (modal) {
+        modal.style.display =
+            "none";
+    }
+
+
+    if (form) {
+        form.reset();
+    }
+
+
+    if (history) {
+
+        history.innerHTML = "";
+
+        history.classList.add(
+            "hidden"
+        );
+
+    }
+
+
+    editingDeliveryId =
+        null;
+}
+
+
+/* =====================================================
+   QUICK STATUS UPDATE
+===================================================== */
+
+function updateDeliveryStatus(
+    id,
+    newStatus
+) {
+
+    const user =
+        getCurrentUser();
+
+
+    if (!user) {
+        return;
+    }
+
+
+    const deliveries =
+        getDeliveries();
+
+
+    const delivery =
+        deliveries.find(
+            function (item) {
+
+                return (
+                    item.id === id
+                );
+
+            }
+        );
+
+
+    if (!delivery) {
+
+        alert(
+            "Delivery not found."
+        );
+
+        return;
+    }
+
+
+    if (
+        !canUpdateDeliveryStatus(
+            delivery
+        )
+    ) {
+
+        alert(
+            "You do not have permission to update this delivery."
+        );
+
+        return;
+    }
+
+
+    if (
+        delivery.status ===
+        newStatus
+    ) {
+
+        return;
+    }
+
+
+    const timestamp =
+        getCurrentTimestamp();
+
+
+    delivery.status =
+        newStatus;
+
+
+    delivery.updatedAt =
+        timestamp;
+
+
+    delivery.updatedBy =
+        getUserDisplayName(
+            user
+        );
+
+
+    if (
+        newStatus ===
+        "Delivered"
+    ) {
+
+        delivery.deliveredAt =
+            timestamp;
+
+    } else if (
+        delivery.status !==
+        "Delivered"
+    ) {
+
+        /*
+           Do not retain an old delivery
+           completion date when it is moved
+           away from Delivered.
+        */
+
+        if (
+            newStatus !==
+            "Delivered"
+        ) {
+
+            delivery.deliveredAt =
+                "";
+
+        }
+
+    }
+
+
+    if (!delivery.history) {
+        delivery.history = [];
+    }
+
+
+    delivery.history.push({
+
+        status:
+            newStatus,
+
+        timestamp,
+
+        by:
+            getUserDisplayName(
+                user
+            )
+
+    });
+
+
+    saveDeliveries(
+        deliveries
+    );
+
+
+    refreshAllDeliveryViews();
+}
+
+
+/* =====================================================
+   CUSTOMERS
+===================================================== */
+
+function renderCustomers() {
+
+    const container =
+        document.getElementById(
+            "customerList"
+        );
+
+
+    if (!container) {
+        return;
+    }
+
+
+    const visible =
+        getVisibleDeliveries();
+
+
+    const customers = {};
+
+
+    visible.forEach(
+        function (delivery) {
+
+            const key =
+                delivery.customerPhone ||
+                delivery.customerName;
+
+
+            if (!customers[key]) {
+
+                customers[key] = {
+
+                    name:
+                        delivery.customerName,
+
+                    phone:
+                        delivery.customerPhone,
+
+                    count:
+                        0
+
+                };
+
+            }
+
+
+            customers[key].count++;
+
+        }
+    );
+
+
+    const list =
+        Object.values(
+            customers
+        );
+
+
+    if (!list.length) {
+
+        container.innerHTML = `
+
+            <div>
+
+                <b>—</b>
+
+                <strong>
+                    No customers yet
+                </strong>
+
+                <small>
+                    Customer records will appear here.
+                </small>
+
+            </div>
+
+        `;
+
+        return;
+    }
+
+
+    container.innerHTML =
+        list.map(
+            function (customer) {
+
+                const initials =
+                    customer.name
+                        .split(" ")
+                        .map(
+                            function (word) {
+
+                                return word.charAt(0);
+
+                            }
+                        )
+                        .join("")
+                        .substring(0, 2)
+                        .toUpperCase();
+
+
+                return `
+
+                    <div>
+
+                        <b>
+                            ${escapeHtml(
+                                initials
+                            )}
+                        </b>
+
+                        <strong>
+                            ${escapeHtml(
+                                customer.name
+                            )}
+                        </strong>
+
+                        <small>
+                            ${customer.count}
+                            delivery
+                            ${
+                                customer.count === 1
+                                    ? ""
+                                    : "ies"
+                            }
+                        </small>
+
+                        <small>
+                            ${escapeHtml(
+                                customer.phone ||
+                                ""
+                            )}
+                        </small>
+
+                    </div>
+
+                `;
+
+            }
+        ).join("");
+}
+
+
+/* =====================================================
+   DRIVERS
+===================================================== */
+
+function renderDrivers() {
+
+    const container =
+        document.getElementById(
+            "driverList"
+        );
+
+
+    if (!container) {
+        return;
+    }
+
+
+    const riders =
+        getRiders();
+
+
+    if (!riders.length) {
+
+        container.innerHTML = `
+
+            <div>
+
+                <b>—</b>
+
+                <strong>
+                    No riders registered
+                </strong>
+
+                <small>
+                    Riders will appear here after registration.
+                </small>
+
+            </div>
+
+        `;
+
+        return;
+    }
+
+
+    const deliveries =
+        getDeliveries();
+
+
+    container.innerHTML =
+        riders.map(
+            function (rider) {
+
+                const assigned =
+                    deliveries.filter(
+                        function (delivery) {
+
+                            return (
+                                delivery.riderId ===
+                                rider.id &&
+                                delivery.status !==
+                                "Delivered" &&
+                                delivery.status !==
+                                "Cancelled"
+                            );
+
+                        }
+                    ).length;
+
+
+                return `
+
+                    <div>
+
+                        <b>
+
+                            ${
+                                (
+                                    rider.firstName
+                                        .charAt(0) +
+                                    rider.lastName
+                                        .charAt(0)
+                                ).toUpperCase()
+                            }
+
+                        </b>
+
+                        <strong>
+
+                            ${escapeHtml(
+                                rider.firstName +
+                                " " +
+                                rider.lastName
+                            )}
+
+                        </strong>
+
+                        <small>
+                            ${escapeHtml(
+                                rider.id
+                            )}
+                        </small>
+
+                        <small class="green">
+                            ${assigned}
+                            active deliveries
+                        </small>
+
+                    </div>
+
+                `;
+
+            }
+        ).join("");
+}
+
+
+/* =====================================================
+   TRACKING
+===================================================== */
+
+function trackDelivery() {
+
+    const id =
+        document.getElementById(
+            "trackId"
+        )?.value
+        .trim()
+        .toLowerCase();
+
+
+    if (!id) {
+
+        alert(
+            "Enter a delivery ID."
+        );
+
+        return;
+    }
+
+
+    const visible =
+        getVisibleDeliveries();
+
+
+    const delivery =
+        visible.find(
+            function (item) {
+
+                return (
+                    item.id.toLowerCase() ===
+                    id
+                );
+
+            }
+        );
+
+
+    const result =
+        document.getElementById(
+            "trackingResult"
+        );
+
+
+    if (!result) {
+        return;
+    }
+
+
+    if (!delivery) {
+
+        result.classList.remove(
+            "hidden"
+        );
+
+
+        result.innerHTML = `
+
+            <h2>
+                Delivery Not Found
+            </h2>
+
+            <p>
+                No delivery with this ID was found
+                in your available deliveries.
+            </p>
+
+        `;
+
+        return;
+    }
+
+
+    result.classList.remove(
+        "hidden"
+    );
+
+
+    const history =
+        delivery.history || [];
+
+
+    result.innerHTML = `
+
+        <div class="head">
+
+            <div>
+
+                <h2>
+                    ${escapeHtml(
+                        delivery.id
+                    )}
+                </h2>
+
+                <p>
+                    ${escapeHtml(
+                        delivery.customerName
+                    )}
+                </p>
+
+            </div>
+
+            <span class="status ${getStatusClass(
+                delivery.status
+            )}">
+
+                ${escapeHtml(
+                    delivery.status
+                )}
+
+            </span>
+
+        </div>
+
+
+        <div class="delivery-info">
+
+            <div>
+
+                <small>
+                    CUSTOMER
+                </small>
+
+                <strong>
+                    ${escapeHtml(
+                        delivery.customerName
+                    )}
+                </strong>
+
+            </div>
+
+
+            <div>
+
+                <small>
+                    PHONE
+                </small>
+
+                <strong>
+                    ${escapeHtml(
+                        delivery.customerPhone
+                    )}
+                </strong>
+
+            </div>
+
+
+            <div>
+
+                <small>
+                    PICKUP
+                </small>
+
+                <strong>
+                    ${escapeHtml(
+                        delivery.pickupAddress
+                    )}
+                </strong>
+
+            </div>
+
+
+            <div>
+
+                <small>
+                    DESTINATION
+                </small>
+
+                <strong>
+                    ${escapeHtml(
+                        delivery.destination
+                    )}
+                </strong>
+
+            </div>
+
+
+            <div>
+
+                <small>
+                    RIDER
+                </small>
+
+                <strong>
+                    ${escapeHtml(
+                        getRiderName(
+                            delivery.riderId
+                        )
+                    )}
+                </strong>
+
+            </div>
+
+
+            <div>
+
+                <small>
+                    AMOUNT
+                </small>
+
+                <strong>
+                    ₦${formatMoney(
+                        delivery.amount
+                    )}
+                </strong>
+
+            </div>
+
+        </div>
+
+
+        <div class="timeline">
+
+            ${
+                history.length
+                ?
+                history.map(
+                    function (item) {
+
+                        return `
+
+                            <div>
+
+                                ✓
+
+                                <span>
+
+                                    <b>
+                                        ${escapeHtml(
+                                            item.status
+                                        )}
+                                    </b>
+
+                                    <small>
+                                        ${escapeHtml(
+                                            formatDateTime(
+                                                item.timestamp
+                                            )
+                                        )}
+                                        ·
+                                        ${escapeHtml(
+                                            item.by ||
+                                            "System"
+                                        )}
+                                    </small>
+
+                                </span>
+
+                            </div>
+
+                        `;
+
+                    }
+                ).join("")
+                :
+                `
+                    <div>
+
+                        ●
+
+                        <span>
+
+                            <b>
+                                ${escapeHtml(
+                                    delivery.status
+                                )}
+                            </b>
+
+                        </span>
+
+                    </div>
+                `
+            }
+
+        </div>
+
+    `;
+}
+
+
+/* =====================================================
+   NAVIGATION
+===================================================== */
+
+const pageInfo = {
+
+    dashboard: [
+        "Dashboard",
+        "Welcome back."
+    ],
+
+    deliveries: [
+        "Deliveries",
+        "Manage delivery orders."
+    ],
+
+    tracking: [
+        "Tracking",
+        "Track deliveries."
+    ],
+
+    customers: [
+        "Customers",
+        "Manage customer profiles."
+    ],
+
+    drivers: [
+        "Drivers",
+        "Manage your riders and fleet."
+    ],
+
+    analytics: [
+        "Analytics",
+        "Monitor logistics performance."
+    ],
+
+    attendance: [
+        "Attendance",
+        "Monitor rider attendance, location verification and weekly earnings."
+    ],
+
+    settings: [
+        "Settings",
+        "Configure your delivery management system."
+    ]
+
+};
+
+
+function openPage(name) {
+
+    document
+        .querySelectorAll(".page")
+        .forEach(
+            function (page) {
+
+                page.classList.toggle(
+                    "hidden",
+                    page.id !== name
+                );
+
+            }
+        );
+
+
+    document
+        .querySelectorAll(
+            ".side nav button,.bottom button"
+        )
+        .forEach(
+            function (button) {
+
+                button.classList.toggle(
+                    "active",
+                    button.dataset.page ===
+                    name
+                );
+
+            }
+        );
+
+
+    if (pageInfo[name]) {
+
+        const title =
+            document.getElementById(
+                "title"
+            );
+
+        const sub =
+            document.getElementById(
+                "sub"
+            );
+
+
+        if (title) {
+            title.textContent =
+                pageInfo[name][0];
+        }
+
+        if (sub) {
+            sub.textContent =
+                pageInfo[name][1];
+        }
+
+    }
+
+
+    if (
+        name === "attendance"
+    ) {
+
+        renderAttendancePage();
+
+    }
+
+
+    if (
+        name === "deliveries"
+    ) {
+
+        renderDeliveries();
+
+    }
+
+
+    if (
+        name === "customers"
+    ) {
+
+        renderCustomers();
+
+    }
+
+
+    if (
+        name === "drivers"
+    ) {
+
+        renderDrivers();
+
+    }
+}
+
+
+/* =====================================================
+   CHARTS
+===================================================== */
+
+function initializeCharts() {
+
+    if (
+        typeof Chart ===
+        "undefined"
+    ) {
+
+        console.warn(
+            "Chart.js is not loaded."
+        );
+
+        return;
+    }
+
+
+    const lineCanvas =
+        document.getElementById(
+            "line"
+        );
+
+
+    if (
+        lineCanvas &&
+        !deliveryLineChart
+    ) {
+
+        deliveryLineChart =
+            new Chart(
+                lineCanvas,
+                {
+
+                    type: "line",
+
+                    data: {
+
+                        labels: [
+                            "Mon",
+                            "Tue",
+                            "Wed",
+                            "Thu",
+                            "Fri",
+                            "Sat",
+                            "Sun"
+                        ],
+
+                        datasets: [
+
+                            {
+
+                                label:
+                                    "Deliveries",
+
+                                data: [
+                                    0,
+                                    0,
+                                    0,
+                                    0,
+                                    0,
+                                    0,
+                                    0
+                                ],
+
+                                borderColor:
+                                    "#e7b31a",
+
+                                backgroundColor:
+                                    "rgba(231,179,26,.12)",
+
+                                fill: true,
+
+                                tension: .4
+
+                            }
+
+                        ]
+
+                    },
+
+                    options: {
+
+                        responsive: true,
+
+                        plugins: {
+
+                            legend: {
+
+                                display: false
+
+                            }
+
+                        }
+
+                    }
+
+                }
+            );
+
+    }
+
+
+    const donutCanvas =
+        document.getElementById(
+            "donut"
+        );
+
+
+    if (
+        donutCanvas &&
+        !deliveryDonut
+    ) {
+
+        deliveryDonut =
+            new Chart(
+                donutCanvas,
+                {
+
+                    type:
+                        "doughnut",
+
+                    data: {
+
+                        labels: [
+                            "Delivered",
+                            "In Transit",
+                            "Pending"
+                        ],
+
+                        datasets: [
+
+                            {
+
+                                data: [
+                                    0,
+                                    0,
+                                    0
+                                ],
+
+                                backgroundColor: [
+                                    "#e7b31a",
+                                    "#344054",
+                                    "#d9dee6"
+                                ],
+
+                                borderWidth:
+                                    0
+
+                            }
+
+                        ]
+
+                    },
+
+                    options: {
+
+                        cutout:
+                            "72%",
+
+                        plugins: {
+
+                            legend: {
+
+                                display:
+                                    false
+
+                            }
+
+                        }
+
+                    }
+
+                }
+            );
+
+    }
+
+
+    const barCanvas =
+        document.getElementById(
+            "bar"
+        );
+
+
+    if (
+        barCanvas &&
+        !deliveryBar
+    ) {
+
+        deliveryBar =
+            new Chart(
+                barCanvas,
+                {
+
+                    type:
+                        "bar",
+
+                    data: {
+
+                        labels: [
+                            "Current"
+                        ],
+
+                        datasets: [
+
+                            {
+
+                                label:
+                                    "Revenue ₦m",
+
+                                data: [
+                                    0
+                                ],
+
+                                backgroundColor:
+                                    "#e7b31a",
+
+                                borderRadius:
+                                    6
+
+                            }
+
+                        ]
+
+                    },
+
+                    options: {
+
+                        responsive:
+                            true,
+
+                        plugins: {
+
+                            legend: {
+
+                                display:
+                                    false
+
+                            }
+
+                        }
+
+                    }
+
+                }
+            );
+
+    }
+}
+
+
+/* =====================================================
+   DOM EVENT SETUP
+===================================================== */
+
+function initializeEventListeners() {
+
+    const navButtons =
+        document.querySelectorAll(
+            ".side nav button,.bottom button"
+        );
+
+
+    navButtons.forEach(
+        function (button) {
+
+            button.addEventListener(
+                "click",
+                function () {
+
+                    openPage(
+                        button.dataset.page
+                    );
+
+
+                    document
+                        .querySelector(
+                            ".side"
+                        )
+                        ?.classList.remove(
+                            "open"
+                        );
+
+                }
+            );
+
+        }
+    );
+
+
+    document
+        .querySelectorAll(
+            "[data-go]"
+        )
+        .forEach(
+            function (button) {
+
+                button.addEventListener(
+                    "click",
+                    function () {
+
+                        openPage(
+                            button.dataset.go
+                        );
+
+                    }
+                );
+
+            }
+        );
+
+
+    const menu =
+        document.getElementById(
+            "menu"
+        );
+
+
+    if (menu) {
+
+        menu.addEventListener(
+            "click",
+            function () {
+
+                document
+                    .querySelector(
+                        ".side"
+                    )
+                    ?.classList.toggle(
+                        "open"
+                    );
+
+            }
+        );
+
+    }
+
+
+    const search =
+        document.getElementById(
+            "search"
+        );
+
+
+    if (search) {
+
+        search.addEventListener(
+            "input",
+            function () {
+
+                renderDeliveries();
+
+            }
+        );
+
+    }
+
+
+    document
+        .querySelectorAll(
+            ".new"
+        )
+        .forEach(
+            function (button) {
+
+                button.addEventListener(
+                    "click",
+                    function () {
+
+                        openNewDelivery();
+
+                    }
+                );
+
+            }
+        );
+
+
+    const closeButton =
+        document.getElementById(
+            "close"
+        );
+
+
+    if (closeButton) {
+
+        closeButton.addEventListener(
+            "click",
+            function () {
+
+                closeDeliveryModal();
+
+            }
+        );
+
+    }
+
+
+    const form =
+        document.getElementById(
+            "form"
+        );
+
+
+    if (form) {
+
+        form.addEventListener(
+            "submit",
+            saveDelivery
+        );
+
+    }
+
+
+    const modal =
+        document.getElementById(
+            "modal"
+        );
+
+
+    if (modal) {
+
+        modal.addEventListener(
+            "click",
+            function (event) {
+
+                if (
+                    event.target ===
+                    this
+                ) {
+
+                    closeDeliveryModal();
+
+                }
+
+            }
+        );
+
+    }
+
+
+    const trackButton =
+        document.getElementById(
+            "track"
+        );
+
+
+    if (trackButton) {
+
+        trackButton.addEventListener(
+            "click",
+            trackDelivery
+        );
+
+    }
+}
+
+
+/* =====================================================
+   RESTORE SESSION
+===================================================== */
 
 document.addEventListener(
     "DOMContentLoaded",
-    () => {
-        /*
-         * IMPORTANT:
-         * This only creates an empty delivery
-         * array when no delivery data exists.
-         *
-         * It does NOT seed demo deliveries.
-         */
+    function () {
+
         initializeDeliveries();
 
-        /*
-         * Remove the old four demo records
-         * if they were created by an older
-         * version of the system.
-         */
-        removeOldDemoDeliveriesOnce();
+        initializeCharts();
 
-        /*
-         * Update older records to support
-         * deliveredAt and other fields.
-         */
-        migrateDeliveryData();
-        migrateAttendanceData();
+        initializeEventListeners();
 
-        setupSearch();
-        setupModalEvents();
-        setupDeliveryForm();
-        setupNavigation();
-        setupDeliveryFilters();
 
-        const form =
-            document.getElementById(
-                "form"
+        const loggedIn =
+            sessionStorage.getItem(
+                "blackRabbitLoggedIn"
             );
 
-        if (form) {
-            form.addEventListener(
-                "submit",
-                saveDelivery
+
+        const savedUser =
+            JSON.parse(
+                sessionStorage.getItem(
+                    "blackRabbitCurrentUser"
+                ) || "null"
             );
+
+
+        if (
+            loggedIn === "true" &&
+            savedUser
+        ) {
+
+            const authScreen =
+                document.getElementById(
+                    "authScreen"
+                );
+
+            const mainApp =
+                document.getElementById(
+                    "mainApp"
+                );
+
+
+            if (authScreen) {
+                authScreen.style.display =
+                    "none";
+            }
+
+            if (mainApp) {
+                mainApp.style.display =
+                    "flex";
+            }
+
+
+            updateUserInformation(
+                savedUser
+            );
+
+            configureRoleInterface(
+                savedUser
+            );
+
+            refreshAllDeliveryViews();
+
+            renderRiderAttendanceCard();
+
+            renderRiderEarningsCard();
+
         }
 
-        /*
-         * Make sure the default page
-         * starts correctly.
-         */
-        restoreSession();
     }
 );
-
-
-/* =========================================================
-   WINDOW FUNCTIONS
-   Make functions available to inline
-   onclick handlers in index.html.
-   ========================================================= */
-
-window.selectRole =
-    selectRole;
-
-window.togglePassword =
-    togglePassword;
-
-window.registerRider =
-    registerRider;
-
-window.riderLogin =
-    riderLogin;
-
-window.adminLogin =
-    adminLogin;
-
-window.logout =
-    logout;
-
-window.riderCheckIn =
-    riderCheckIn;
-
-window.riderCheckOut =
-    riderCheckOut;
-
-window.openPage =
-    openPage;
-
-window.openNewDelivery =
-    openNewDelivery;
-
-window.openEditDelivery =
-    openEditDelivery;
-
-window.closeDeliveryModal =
-    closeDeliveryModal;
-
-window.saveDelivery =
-    saveDelivery;
-
-window.updateDeliveryStatus =
-    updateDeliveryStatus;
-
-window.setDeliveryFilter =
-    setDeliveryFilter;
-
-window.filterAttendance =
-    filterAttendance;
-
-window.track =
-    track;
-
-window.renderAttendancePage =
-    renderAttendancePage;
-
-window.renderDeliveries =
-    renderDeliveries;
-
-window.refreshAllDeliveryViews =
-    refreshAllDeliveryViews;
-
-
-/* =========================================================
-   END OF SCRIPT
-   ========================================================= */
