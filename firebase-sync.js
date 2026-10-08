@@ -1,20 +1,23 @@
+```js
 /*
   Black Rabbit Logistics - Firebase Cloud Sync
   Shared data layer for deliveries, riders, attendance and rider payments.
 
-  IMPORTANT:
-  1. Put your Firebase web-app config in FIREBASE_CONFIG below.
-  2. Load Firebase App + Firestore BEFORE this file.
-  3. Load this file BEFORE your existing script.js.
+  This file must load AFTER:
+  1. firebase-app-compat.js
+  2. firebase-firestore-compat.js
+
+  And BEFORE:
+  3. script.js
 */
 
 const FIREBASE_CONFIG = {
-    apiKey: "PASTE_YOUR_FIREBASE_API_KEY",
-    authDomain: "PASTE_YOUR_PROJECT.firebaseapp.com",
-    projectId: "PASTE_YOUR_PROJECT_ID",
-    storageBucket: "PASTE_YOUR_PROJECT.firebasestorage.app",
-    messagingSenderId: "PASTE_YOUR_MESSAGING_SENDER_ID",
-    appId: "PASTE_YOUR_APP_ID"
+    apiKey: "AIzaSyAY2GTNQg1SJIFccGj4fb34kbHlnnaIylI",
+    authDomain: "black-rabbit-logistics.firebaseapp.com",
+    projectId: "black-rabbit-logistics",
+    storageBucket: "black-rabbit-logistics.firebasestorage.app",
+    messagingSenderId: "859935511447",
+    appId: "1:859935511447:web:b2b2bf09f1d6d692406ad2"
 };
 
 (function(){
@@ -28,6 +31,7 @@ const FIREBASE_CONFIG = {
     ];
 
     const CLOUD_DOC = "blackRabbit/main";
+
     const originalGetItem = Storage.prototype.getItem;
     const originalSetItem = Storage.prototype.setItem;
     const originalRemoveItem = Storage.prototype.removeItem;
@@ -43,7 +47,7 @@ const FIREBASE_CONFIG = {
     function safeJson(value){
         try{
             return JSON.parse(value);
-        }catch(e){
+        }catch(error){
             return [];
         }
     }
@@ -56,14 +60,11 @@ const FIREBASE_CONFIG = {
         return originalSetItem.call(localStorage, key, value);
     }
 
-    function removeLocal(key){
-        return originalRemoveItem.call(localStorage, key);
-    }
-
     function hasRealFirebaseConfig(){
         return FIREBASE_CONFIG.apiKey &&
-            !FIREBASE_CONFIG.apiKey.startsWith("PASTE_") &&
             FIREBASE_CONFIG.projectId &&
+            FIREBASE_CONFIG.authDomain &&
+            !FIREBASE_CONFIG.apiKey.startsWith("PASTE_") &&
             !FIREBASE_CONFIG.projectId.startsWith("PASTE_");
     }
 
@@ -74,10 +75,13 @@ const FIREBASE_CONFIG = {
         };
 
         const el = document.getElementById("cloudSyncStatus");
+
         if(el){
             el.textContent = text;
             el.dataset.status = type || "info";
         }
+
+        console.log("[Black Rabbit Cloud]", text);
     }
 
     function refreshApp(){
@@ -85,52 +89,105 @@ const FIREBASE_CONFIG = {
             if(typeof window.refreshAllDeliveryViews === "function"){
                 window.refreshAllDeliveryViews();
             }
-        }catch(e){
-            console.warn("Black Rabbit refresh failed:", e);
+        }catch(error){
+            console.warn(
+                "Black Rabbit delivery view refresh failed:",
+                error
+            );
         }
 
         try{
             if(typeof window.phase2Refresh === "function"){
                 window.phase2Refresh();
             }
-        }catch(e){
-            console.warn("Black Rabbit Phase 2 refresh failed:", e);
+        }catch(error){
+            console.warn(
+                "Black Rabbit Phase 2 refresh failed:",
+                error
+            );
         }
     }
 
+    /*
+      Check Firebase configuration.
+    */
     if(!hasRealFirebaseConfig()){
-        console.warn("Black Rabbit Cloud Sync: Firebase config has not been added yet.");
-        setSyncStatus("Cloud sync not configured", "warning");
+        console.warn(
+            "Black Rabbit Cloud Sync: Firebase configuration is missing."
+        );
+
+        setSyncStatus(
+            "Cloud sync not configured",
+            "warning"
+        );
+
         return;
     }
 
+    /*
+      Check Firebase SDK.
+    */
     if(!window.firebase){
-        console.error("Black Rabbit Cloud Sync: Firebase SDK is missing.");
-        setSyncStatus("Firebase SDK missing", "error");
+        console.error(
+            "Black Rabbit Cloud Sync: Firebase SDK is missing."
+        );
+
+        setSyncStatus(
+            "Firebase SDK missing",
+            "error"
+        );
+
         return;
     }
 
     try{
+
+        /*
+          Initialize Firebase only once.
+        */
         if(!firebase.apps.length){
             firebase.initializeApp(FIREBASE_CONFIG);
         }
 
+        /*
+          Connect to Firestore.
+        */
         const db = firebase.firestore();
+
         const docRef = db.doc(CLOUD_DOC);
 
         window.blackRabbitCloudDB = db;
         window.blackRabbitCloudReady = false;
 
         /*
-          Intercept the existing localStorage layer. Your current dashboard
-          can keep using getRiders(), getDeliveries(), getAttendance(), etc.
-          without rewriting all 6,000+ lines of business logic.
-        */
-        Storage.prototype.setItem = function(key, value){
-            const result = originalSetItem.call(this, key, value);
+          INTERCEPT LOCALSTORAGE SAVES
 
-            if(this === localStorage && isSyncKey(key) && !applyingCloud){
+          Your existing dashboard already uses:
+
+          saveRiders()
+          saveDeliveries()
+          saveAttendance()
+
+          We don't need to rewrite those functions.
+        */
+
+        Storage.prototype.setItem = function(key, value){
+
+            const result =
+                originalSetItem.call(
+                    this,
+                    key,
+                    value
+                );
+
+            if(
+                this === localStorage &&
+                isSyncKey(key) &&
+                !applyingCloud
+            ){
+
                 queuedWrites[key] = safeJson(value);
+
                 if(cloudReady){
                     flushKey(key);
                 }
@@ -138,12 +195,27 @@ const FIREBASE_CONFIG = {
 
             return result;
         };
+
+        /*
+          INTERCEPT LOCALSTORAGE DELETE
+        */
 
         Storage.prototype.removeItem = function(key){
-            const result = originalRemoveItem.call(this, key);
 
-            if(this === localStorage && isSyncKey(key) && !applyingCloud){
+            const result =
+                originalRemoveItem.call(
+                    this,
+                    key
+                );
+
+            if(
+                this === localStorage &&
+                isSyncKey(key) &&
+                !applyingCloud
+            ){
+
                 queuedWrites[key] = [];
+
                 if(cloudReady){
                     flushKey(key);
                 }
@@ -152,91 +224,255 @@ const FIREBASE_CONFIG = {
             return result;
         };
 
+        /*
+          SEND ONE DATA CATEGORY TO FIRESTORE
+        */
+
         async function flushKey(key){
-            if(!cloudReady || !isSyncKey(key)){
+
+            if(
+                !cloudReady ||
+                !isSyncKey(key)
+            ){
                 return;
             }
 
-            const data = Object.prototype.hasOwnProperty.call(queuedWrites, key)
+            const data =
+                Object.prototype.hasOwnProperty.call(
+                    queuedWrites,
+                    key
+                )
                 ? queuedWrites[key]
-                : safeJson(getLocal(key) || "[]");
+                : safeJson(
+                    getLocal(key) || "[]"
+                );
 
             delete queuedWrites[key];
 
             try{
-                const payload = {};
-                payload[key] = data;
-                payload.updatedAt = firebase.firestore.FieldValue.serverTimestamp();
 
-                await docRef.set(payload, {merge:true});
+                const payload = {};
+
+                payload[key] = data;
+
+                payload.updatedAt =
+                    firebase.firestore.FieldValue.serverTimestamp();
+
+                await docRef.set(
+                    payload,
+                    {
+                        merge: true
+                    }
+                );
+
+                setSyncStatus(
+                    "Cloud sync connected",
+                    "success"
+                );
+
             }catch(error){
-                console.error("Black Rabbit cloud write failed:", error);
+
+                console.error(
+                    "Black Rabbit cloud write failed:",
+                    error
+                );
+
                 queuedWrites[key] = data;
-                setSyncStatus("Cloud sync error", "error");
+
+                setSyncStatus(
+                    "Cloud sync error",
+                    "error"
+                );
             }
         }
 
+        /*
+          SEND ALL LOCAL DATA TO FIRESTORE
+        */
+
         async function flushAll(){
-            const jobs = SYNC_KEYS.map(function(key){
-                return flushKey(key);
-            });
+
+            const jobs =
+                SYNC_KEYS.map(function(key){
+                    return flushKey(key);
+                });
+
             await Promise.all(jobs);
         }
 
+        /*
+          APPLY FIRESTORE DATA TO THIS DEVICE
+        */
+
         function applyCloudData(data){
+
             applyingCloud = true;
 
             try{
+
                 SYNC_KEYS.forEach(function(key){
-                    if(Object.prototype.hasOwnProperty.call(data, key)){
-                        setLocal(key, JSON.stringify(data[key] || []));
+
+                    if(
+                        Object.prototype.hasOwnProperty.call(
+                            data,
+                            key
+                        )
+                    ){
+
+                        setLocal(
+                            key,
+                            JSON.stringify(
+                                data[key] || []
+                            )
+                        );
                     }
                 });
+
             }finally{
+
                 applyingCloud = false;
             }
+
+            /*
+              Refresh dashboard after cloud data arrives.
+            */
 
             refreshApp();
         }
 
-        docRef.onSnapshot(async function(snapshot){
-            try{
-                if(!snapshot.exists){
-                    /* First connected device becomes the initial data source. */
+        /*
+          REALTIME FIRESTORE LISTENER
+        */
+
+        docRef.onSnapshot(
+
+            async function(snapshot){
+
+                try{
+
+                    /*
+                      No cloud document yet.
+
+                      The first device that connects will
+                      upload its current local data.
+                    */
+
+                    if(!snapshot.exists){
+
+                        console.log(
+                            "Black Rabbit: Creating initial cloud database..."
+                        );
+
+                        cloudReady = true;
+
+                        window.blackRabbitCloudReady =
+                            true;
+
+                        setSyncStatus(
+                            "Cloud sync connected",
+                            "success"
+                        );
+
+                        await flushAll();
+
+                        return;
+                    }
+
+                    /*
+                      Cloud document already exists.
+                    */
+
+                    const data =
+                        snapshot.data() || {};
+
+                    const hasAnyCloudData =
+                        SYNC_KEYS.some(function(key){
+
+                            return Object.prototype.hasOwnProperty.call(
+                                data,
+                                key
+                            );
+                        });
+
+                    /*
+                      Download cloud data to this device.
+                    */
+
+                    if(hasAnyCloudData){
+
+                        applyCloudData(data);
+                    }
+
                     cloudReady = true;
-                    window.blackRabbitCloudReady = true;
-                    setSyncStatus("Cloud sync connected", "success");
+
+                    window.blackRabbitCloudReady =
+                        true;
+
+                    setSyncStatus(
+                        "Cloud sync connected",
+                        "success"
+                    );
+
+                    /*
+                      Send any local categories that have
+                      not yet been uploaded.
+                    */
+
                     await flushAll();
-                    return;
+
+                }catch(error){
+
+                    console.error(
+                        "Black Rabbit cloud sync error:",
+                        error
+                    );
+
+                    setSyncStatus(
+                        "Cloud sync error",
+                        "error"
+                    );
                 }
 
-                const data = snapshot.data() || {};
-                const hasAnyCloudData = SYNC_KEYS.some(function(key){
-                    return Object.prototype.hasOwnProperty.call(data, key);
-                });
+            },
 
-                if(hasAnyCloudData){
-                    applyCloudData(data);
-                }
+            function(error){
 
-                cloudReady = true;
-                window.blackRabbitCloudReady = true;
-                setSyncStatus("Cloud sync connected", "success");
+                console.error(
+                    "Black Rabbit Firestore listener error:",
+                    error
+                );
 
-                await flushAll();
-            }catch(error){
-                console.error("Black Rabbit cloud sync error:", error);
-                setSyncStatus("Cloud sync error", "error");
+                setSyncStatus(
+                    "Cloud connection failed",
+                    "error"
+                );
             }
-        }, function(error){
-            console.error("Black Rabbit Firestore listener error:", error);
-            setSyncStatus("Cloud connection failed", "error");
-        });
+        );
 
-        window.blackRabbitCloudForceSync = flushAll;
+        /*
+          Make manual synchronization available
+          from the browser console if needed.
+        */
+
+        window.blackRabbitCloudForceSync =
+            flushAll;
+
+        console.log(
+            "Black Rabbit Firebase Cloud Sync initialized."
+        );
 
     }catch(error){
-        console.error("Black Rabbit Firebase initialization failed:", error);
-        setSyncStatus("Firebase initialization failed", "error");
+
+        console.error(
+            "Black Rabbit Firebase initialization failed:",
+            error
+        );
+
+        setSyncStatus(
+            "Firebase initialization failed",
+            "error"
+        );
     }
+
 })();
+```
