@@ -1,5 +1,3 @@
-```js
-/*
   Black Rabbit Logistics - Firebase Cloud Sync
   Shared data layer for deliveries, riders, attendance and rider payments.
 
@@ -475,4 +473,3 @@ const FIREBASE_CONFIG = {
     }
 
 })();
-```
