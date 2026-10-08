@@ -1389,22 +1389,13 @@ Create Delivery
 
 </div>
 
-</div>
 
-
-    <script src="script.js"></script>
-<!-- =====================================================
-     FIREBASE + BLACK RABBIT CLOUD SYNC
-===================================================== -->
-
+<!-- FIREBASE LIBRARIES: LOAD ONCE -->
 <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore-compat.js"></script>
 
+<!-- FIREBASE CONFIGURATION AND CLOUD SYNC -->
 <script>
-/* =====================================================
-   FIREBASE CONFIGURATION
-===================================================== */
-
 const FIREBASE_CONFIG = {
     apiKey: "AIzaSyAY2GTNQg1SJIFccGj4fb34kbHlnnaIylI",
     authDomain: "black-rabbit-logistics.firebaseapp.com",
@@ -1414,43 +1405,7 @@ const FIREBASE_CONFIG = {
     appId: "1:859935511447:web:b2b2bf09f1d6d692406ad2"
 };
 
-
-/* =====================================================
-   INITIALIZE FIREBASE
-===================================================== */
-
-let blackRabbitFirebaseApp;
-let blackRabbitFirestore;
-let blackRabbitCloudReady = false;
-
-try {
-
-    blackRabbitFirebaseApp =
-        firebase.initializeApp(FIREBASE_CONFIG);
-
-    blackRabbitFirestore =
-        firebase.firestore();
-
-    console.log(
-        "Black Rabbit Firebase Cloud Sync initialized."
-    );
-
-} catch(error) {
-
-    console.error(
-        "Firebase initialization failed:",
-        error
-    );
-
-}
-
-
-/* =====================================================
-   LOCAL STORAGE SYNC
-===================================================== */
-
-(function(){
-
+(function () {
     const SYNC_KEYS = [
         "blackRabbitRiders",
         "blackRabbitDeliveries",
@@ -1458,455 +1413,146 @@ try {
         "blackRabbitRiderPayments"
     ];
 
-    const CLOUD_COLLECTION = "blackRabbit";
-    const CLOUD_DOCUMENT = "main";
-
+    let db;
     let applyingCloud = false;
-    let pendingSync = false;
-    let syncTimer = null;
+    let syncTimer;
 
+    try {
+        if (!firebase.apps.length) {
+            firebase.initializeApp(FIREBASE_CONFIG);
+        }
 
-    /* -------------------------------------------------
-       SAVE ORIGINAL LOCAL STORAGE FUNCTIONS
-    ------------------------------------------------- */
+        db = firebase.firestore();
+        console.log("Black Rabbit Firebase Cloud Sync initialized.");
+    } catch (error) {
+        console.error("Firebase initialization failed:", error);
+        return;
+    }
 
-    const originalSetItem =
-        Storage.prototype.setItem;
+    const docRef = db.collection("blackRabbit").doc("main");
+    const originalSetItem = Storage.prototype.setItem;
+    const originalRemoveItem = Storage.prototype.removeItem;
+    const originalGetItem = Storage.prototype.getItem;
 
-    const originalRemoveItem =
-        Storage.prototype.removeItem;
+    function updateStatus(message) {
+        const element = document.getElementById("cloudSyncStatus");
+        if (element) element.textContent = message;
+    }
 
-    const originalGetItem =
-        Storage.prototype.getItem;
-
-
-    /* -------------------------------------------------
-       GET CURRENT BLACK RABBIT DATA
-    ------------------------------------------------- */
-
-    function getAllLocalData(){
-
+    function readLocalData() {
         const data = {};
 
-        SYNC_KEYS.forEach(function(key){
+        SYNC_KEYS.forEach(function (key) {
+            const value = originalGetItem.call(localStorage, key);
 
-            const value =
-                originalGetItem.call(
-                    localStorage,
-                    key
-                );
-
-            if(value !== null){
-
+            if (value !== null) {
                 try {
-
-                    data[key] =
-                        JSON.parse(value);
-
-                } catch(error){
-
+                    data[key] = JSON.parse(value);
+                } catch {
                     data[key] = value;
-
                 }
-
-            } else {
-
-                data[key] = null;
-
             }
-
         });
 
         return data;
     }
 
-
-    /* -------------------------------------------------
-       CLOUD DOCUMENT
-    ------------------------------------------------- */
-
-    function getCloudDocument(){
-
-        if(!blackRabbitFirestore){
-            return null;
-        }
-
-        return blackRabbitFirestore
-            .collection(CLOUD_COLLECTION)
-            .doc(CLOUD_DOCUMENT);
-    }
-
-
-    /* -------------------------------------------------
-       UPLOAD LOCAL DATA
-    ------------------------------------------------- */
-
-    async function syncToCloud(){
-
-        if(
-            !blackRabbitFirestore ||
-            applyingCloud
-        ){
-            return;
-        }
+    async function uploadLocalData() {
+        if (applyingCloud) return;
 
         try {
+            await docRef.set(readLocalData(), { merge: true });
+            updateStatus("Cloud Sync: Connected");
+            console.log("Black Rabbit data synced to cloud.");
+        } catch (error) {
+            updateStatus("Cloud Sync: Error");
+            console.error("Cloud sync failed:", error);
+        }
+    }
 
-            const docRef =
-                getCloudDocument();
+    function scheduleSync() {
+        if (applyingCloud) return;
 
-            if(!docRef){
+        clearTimeout(syncTimer);
+        syncTimer = setTimeout(uploadLocalData, 800);
+    }
+
+    Storage.prototype.setItem = function (key, value) {
+        originalSetItem.call(this, key, value);
+
+        if (
+            this === localStorage &&
+            SYNC_KEYS.includes(key) &&
+            !applyingCloud
+        ) {
+            scheduleSync();
+        }
+    };
+
+    Storage.prototype.removeItem = function (key) {
+        originalRemoveItem.call(this, key);
+
+        if (
+            this === localStorage &&
+            SYNC_KEYS.includes(key) &&
+            !applyingCloud
+        ) {
+            scheduleSync();
+        }
+    };
+
+    window.blackRabbitCloudForceSync = uploadLocalData;
+
+    docRef.onSnapshot(
+        function (snapshot) {
+            window.blackRabbitCloudReady = true;
+            updateStatus("Cloud Sync: Connected");
+
+            if (!snapshot.exists) {
+                // Initialize the cloud document from this device.
+                uploadLocalData();
                 return;
             }
 
-            const data =
-                getAllLocalData();
+            const cloudData = snapshot.data();
+            applyingCloud = true;
 
-            await docRef.set(
-                data,
-                {
-                    merge: true
-                }
-            );
-
-            console.log(
-                "Black Rabbit data synced to cloud."
-            );
-
-            updateSyncStatus(
-                "Cloud Sync: Connected"
-            );
-
-        } catch(error){
-
-            console.error(
-                "Cloud sync failed:",
-                error
-            );
-
-            updateSyncStatus(
-                "Cloud Sync: Error"
-            );
-
-        }
-
-    }
-
-
-    /* -------------------------------------------------
-       DELAY CLOUD SYNC
-    ------------------------------------------------- */
-
-    function scheduleCloudSync(){
-
-        if(applyingCloud){
-            return;
-        }
-
-        pendingSync = true;
-
-        clearTimeout(syncTimer);
-
-        syncTimer =
-            setTimeout(function(){
-
-                if(pendingSync){
-
-                    pendingSync = false;
-
-                    syncToCloud();
-
-                }
-
-            }, 800);
-
-    }
-
-
-    /* -------------------------------------------------
-       INTERCEPT localStorage.setItem
-    ------------------------------------------------- */
-
-    Storage.prototype.setItem =
-        function(key, value){
-
-            originalSetItem.call(
-                this,
-                key,
-                value
-            );
-
-            if(
-                this === localStorage &&
-                SYNC_KEYS.includes(key) &&
-                !applyingCloud
-            ){
-
-                scheduleCloudSync();
-
+            try {
+                SYNC_KEYS.forEach(function (key) {
+                    if (
+                        Object.prototype.hasOwnProperty.call(cloudData, key) &&
+                        cloudData[key] !== null
+                    ) {
+                        originalSetItem.call(
+                            localStorage,
+                            key,
+                            JSON.stringify(cloudData[key])
+                        );
+                    }
+                });
+            } finally {
+                applyingCloud = false;
             }
 
-        };
+            console.log("Cloud data received and applied.");
 
-
-    /* -------------------------------------------------
-       INTERCEPT localStorage.removeItem
-    ------------------------------------------------- */
-
-    Storage.prototype.removeItem =
-        function(key){
-
-            originalRemoveItem.call(
-                this,
-                key
-            );
-
-            if(
-                this === localStorage &&
-                SYNC_KEYS.includes(key) &&
-                !applyingCloud
-            ){
-
-                scheduleCloudSync();
-
-            }
-
-        };
-
-
-    /* -------------------------------------------------
-       APPLY CLOUD DATA TO THIS DEVICE
-    ------------------------------------------------- */
-
-    function applyCloudData(data){
-
-        if(!data){
-            return;
-        }
-
-        applyingCloud = true;
-
-        try {
-
-            SYNC_KEYS.forEach(function(key){
-
-                if(
-                    data[key] !== undefined &&
-                    data[key] !== null
-                ){
-
-                    originalSetItem.call(
-                        localStorage,
-                        key,
-                        JSON.stringify(data[key])
-                    );
-
-                }
-
-            });
-
-        } catch(error){
-
-            console.error(
-                "Error applying cloud data:",
-                error
-            );
-
-        }
-
-        applyingCloud = false;
-
-
-        /* ---------------------------------------------
-           REFRESH DASHBOARD
-        --------------------------------------------- */
-
-        try {
-
-            if(
-                typeof window.refreshAllDeliveryViews ===
-                "function"
-            ){
-
+            if (typeof window.refreshAllDeliveryViews === "function") {
                 window.refreshAllDeliveryViews();
-
             }
 
-        } catch(error){
-
-            console.warn(
-                "Dashboard refresh failed:",
-                error
-            );
-
-        }
-
-
-        try {
-
-            if(
-                typeof window.phase2Refresh ===
-                "function"
-            ){
-
+            if (typeof window.phase2Refresh === "function") {
                 window.phase2Refresh();
-
             }
-
-        } catch(error){
-
-            console.warn(
-                "Phase 2 refresh failed:",
-                error
-            );
-
+        },
+        function (error) {
+            updateStatus("Cloud Sync: Error");
+            console.error("Cloud listener error:", error);
         }
-
-
-        console.log(
-            "Cloud data applied to this device."
-        );
-
-    }
-
-
-    /* -------------------------------------------------
-       LISTEN FOR CLOUD CHANGES
-    ------------------------------------------------- */
-
-    function startCloudListener(){
-
-        if(!blackRabbitFirestore){
-
-            console.error(
-                "Firestore is not available."
-            );
-
-            return;
-
-        }
-
-        const docRef =
-            getCloudDocument();
-
-        docRef.onSnapshot(
-            function(snapshot){
-
-                blackRabbitCloudReady = true;
-
-                window.blackRabbitCloudReady = true;
-
-                updateSyncStatus(
-                    "Cloud Sync: Connected"
-                );
-
-
-                if(snapshot.exists){
-
-                    console.log(
-                        "Cloud data received."
-                    );
-
-                    applyCloudData(
-                        snapshot.data()
-                    );
-
-                } else {
-
-                    console.log(
-                        "No cloud data exists yet."
-                    );
-
-                    /*
-                     * First device becomes the
-                     * initial source of data.
-                     */
-
-                    syncToCloud();
-
-                }
-
-            },
-            function(error){
-
-                console.error(
-                    "Cloud listener error:",
-                    error
-                );
-
-                updateSyncStatus(
-                    "Cloud Sync: Error"
-                );
-
-            }
-        );
-
-    }
-
-
-    /* -------------------------------------------------
-       MANUAL FORCE SYNC
-    ------------------------------------------------- */
-
-    window.blackRabbitCloudForceSync =
-        function(){
-
-            console.log(
-                "Manual cloud sync started..."
-            );
-
-            syncToCloud();
-
-        };
-
-
-    /* -------------------------------------------------
-       SYNC STATUS DISPLAY
-    ------------------------------------------------- */
-
-    function updateSyncStatus(message){
-
-        const element =
-            document.getElementById(
-                "cloudSyncStatus"
-            );
-
-        if(element){
-
-            element.textContent =
-                message;
-
-        }
-
-    }
-
-
-    /* -------------------------------------------------
-       START SYNC
-    ------------------------------------------------- */
-
-    if(
-        blackRabbitFirestore
-    ){
-
-        startCloudListener();
-
-    }
-
+    );
 })();
-
 </script>
 
-<!-- FIREBASE -->
-<script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore-compat.js"></script>
-
-<!-- FIREBASE CLOUD SYNC -->
-<script>
-    /* YOUR FIREBASE SYNC CODE HERE */
-</script>
-
-<!-- MAIN DASHBOARD SCRIPT - ONLY ONCE -->
+<!-- MAIN DASHBOARD SCRIPT: LOAD EXACTLY ONCE -->
 <script src="script.js"></script>
 
 </body>
