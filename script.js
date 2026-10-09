@@ -189,6 +189,7 @@ const PAGE_INFO = {
     drivers: ["Riders", "Manage registered riders."],
     analytics: ["Analytics", "Review delivery performance and revenue."],
     attendance: ["Attendance", "Rider attendance and check-in records."],
+    leaderboard: ["Leaderboard", "Rider performance rankings."],
     settings: ["Settings", "System configuration."]
 };
 const NEXT_STATUS = {
@@ -199,6 +200,8 @@ const NEXT_STATUS = {
 };
 
 let deliveryFilter = "All";
+let leaderboardPeriod = "week";
+let leaderboardSort = "deliveries";
 let editingDeliveryId = null;
 let charts = {};
 const $ = id => document.getElementById(id);
@@ -479,6 +482,7 @@ function goToPage(page) {
 
     if (page === "attendance") renderAttendancePage();
     if (page === "deliveries") renderDeliveries();
+    if (page === "leaderboard") renderLeaderboard();
 }
 document.querySelectorAll("[data-page]").forEach(b =>
     b.addEventListener("click", () => goToPage(b.dataset.page)));
@@ -984,6 +988,145 @@ function renderCustomers() {
         </div>`).join("") : "<p>No customer records yet.</p>";
 }
 
+/* ================= LEADERBOARD ================= */
+window.setLeaderboardPeriod = function (p) { leaderboardPeriod = p; renderLeaderboard(); };
+window.setLeaderboardSort = function (k) { leaderboardSort = k; renderLeaderboard(); };
+
+function periodStartKey(p) {
+    if (p === "week") return todayKey(weekStart());
+    if (p === "month") {
+        const n = new Date();
+        return todayKey(new Date(n.getFullYear(), n.getMonth(), 1));
+    }
+    return "0000-00-00";
+}
+/* Minutes from "Picked Up" to "Delivered", read from the status history */
+function pickupToDeliveredMinutes(d) {
+    const h = Array.isArray(d.history) ? d.history : [];
+    const pick = h.find(i => normaliseStatus(i.status) === "Picked Up");
+    const done = h.slice().reverse().find(i => normaliseStatus(i.status) === "Delivered");
+    if (!pick || !done) return null;
+    const m = (new Date(done.date) - new Date(pick.date)) / 60000;
+    return Number.isFinite(m) && m >= 0 ? m : null;
+}
+function formatMinutes(m) {
+    if (m === null || m === undefined) return "—";
+    if (m < 60) return Math.max(1, Math.round(m)) + "m";
+    return Math.floor(m / 60) + "h " + Math.round(m % 60) + "m";
+}
+const LB_SORTS = {
+    deliveries: { label: "Most deliveries",
+        cmp: (a, b) => b.delivered - a.delivered || b.rate - a.rate,
+        key: r => r.delivered + "-" + r.rate },
+    rate: { label: "Success rate",
+        cmp: (a, b) => b.rate - a.rate || b.delivered - a.delivered,
+        key: r => r.rate + "-" + r.delivered },
+    speed: { label: "Fastest",
+        cmp: (a, b) => (a.avgMinutes ?? Infinity) - (b.avgMinutes ?? Infinity) || b.delivered - a.delivered,
+        key: r => r.avgMinutes === null ? "none" : String(Math.round(r.avgMinutes)) },
+    attendance: { label: "Attendance",
+        cmp: (a, b) => b.days - a.days || b.delivered - a.delivered,
+        key: r => r.days + "-" + r.delivered },
+    earnings: { label: "Earnings", adminOnly: true,
+        cmp: (a, b) => b.earnings - a.earnings || b.delivered - a.delivered,
+        key: r => r.earnings + "-" + r.delivered }
+};
+function computeLeaderboard(p, sortKey) {
+    const sort = LB_SORTS[sortKey] || LB_SORTS.deliveries;
+    const start = periodStartKey(p);
+    const deliveries = getDeliveries().filter(d => entryDate(d) >= start);
+    const attendance = getAttendance().filter(a => a.checkIn && a.date >= start);
+
+    const rows = getRiders().filter(isRiderApproved).map(r => {
+        const id = riderId(r);
+        const mine = deliveries.filter(d =>
+            deliveryRiderId(d) === id && normaliseStatus(d.status) !== "Cancelled");
+        const done = mine.filter(d => normaliseStatus(d.status) === "Delivered");
+        const times = done.map(pickupToDeliveredMinutes).filter(m => m !== null);
+        return {
+            id, name: riderName(r),
+            total: mine.length, delivered: done.length,
+            rate: mine.length ? Math.round(done.length / mine.length * 100) : 0,
+            avgMinutes: times.length ? times.reduce((x, y) => x + y, 0) / times.length : null,
+            earnings: done.reduce((t, d) => t + Number(d.riderEarning || 0), 0),
+            days: attendance.filter(a => String(a.riderId) === id).length
+        };
+    }).sort((a, b) => sort.cmp(a, b) || a.name.localeCompare(b.name));
+
+    let rank = 0, prev = null;
+    rows.forEach((r, i) => {
+        const k = sort.key(r);
+        if (k !== prev) { rank = i + 1; prev = k; }
+        r.rank = rank;
+    });
+    return rows;
+}
+function renderLeaderboard() {
+    const c = $("leaderboardContent");
+    if (!c || !getUser()) return;
+    const admin = isAdmin();
+    if (!admin && LB_SORTS[leaderboardSort]?.adminOnly) leaderboardSort = "deliveries";
+
+    const rows = computeLeaderboard(leaderboardPeriod, leaderboardSort);
+    const me = rows.find(r => r.id === currentRiderId());
+    const periods = { week: "This week", month: "This month", all: "All time" };
+    const medals = { 1: "🥇", 2: "🥈", 3: "🥉" };
+    const btn = (active, label, fn) =>
+        `<button type="button" class="${active ? "primary" : "secondary"}" onclick="${fn}">${label}</button>`;
+
+    const periodTabs = Object.entries(periods)
+        .map(([k, label]) => btn(k === leaderboardPeriod, label, `setLeaderboardPeriod('${k}')`)).join(" ");
+    const sortTabs = Object.entries(LB_SORTS)
+        .filter(([, v]) => !v.adminOnly || admin)
+        .map(([k, v]) => btn(k === leaderboardSort, v.label, `setLeaderboardSort('${k}')`)).join(" ");
+
+    /* Rider of the Month: most deliveries this calendar month */
+    const monthBest = computeLeaderboard("month", "deliveries")[0];
+    const monthName = new Date().toLocaleDateString("en-NG", { month: "long", year: "numeric" });
+    const champion = monthBest && monthBest.delivered > 0
+        ? `<div class="card"><h2>🏆 Rider of the Month — ${escapeHTML(monthName)}</h2>
+             <p><strong>${escapeHTML(monthBest.name)}</strong>${monthBest.id === currentRiderId() ? " (You!)" : ""}
+             — ${monthBest.delivered} deliveries, ${monthBest.rate}% success rate</p></div>`
+        : "";
+
+    const banner = !admin && me
+        ? `<p><strong>Your position: #${me.rank}</strong> of ${rows.length} riders — ${me.delivered} delivered, ${me.rate}% success rate</p>`
+        : "";
+
+    const body = rows.length ? rows.map(r => {
+        const mine = r.id === currentRiderId();
+        const badge = r.delivered > 0 && medals[r.rank] ? medals[r.rank] : "#" + r.rank;
+        return `<tr${mine ? ' style="font-weight:700"' : ""}>
+            <td>${badge}</td>
+            <td>${escapeHTML(r.name)}${mine ? " (You)" : ""}</td>
+            <td>${r.delivered}</td>
+            <td>${r.total}</td>
+            <td>${r.rate}%</td>
+            <td>${formatMinutes(r.avgMinutes)}</td>
+            <td>${r.days}</td>
+            ${admin ? `<td>${money(r.earnings)}</td>` : ""}
+        </tr>`;
+    }).join("") : `<tr><td colspan="${admin ? 8 : 7}">No riders to rank yet.</td></tr>`;
+
+    c.innerHTML = `
+        ${champion}
+        <div class="card">
+            <h2>Rider Leaderboard</h2>
+            <p>${periods[leaderboardPeriod]} · ranked by: <strong>${LB_SORTS[leaderboardSort].label}</strong></p>
+            <div style="display:flex;gap:8px;flex-wrap:wrap;margin:10px 0;">${periodTabs}</div>
+            <div style="display:flex;gap:8px;flex-wrap:wrap;margin:10px 0;">${sortTabs}</div>
+            ${banner}
+            <div class="table"><table>
+                <thead><tr>
+                    <th>Rank</th><th>Rider</th><th>Delivered</th><th>Assigned</th>
+                    <th>Success</th><th>Avg time</th><th>Days present</th>${admin ? "<th>Earnings</th>" : ""}
+                </tr></thead>
+                <tbody>${body}</tbody>
+            </table></div>
+            <p style="font-size:12px">Avg time = pickup to delivery, taken from status updates. Shows — until a rider has completed deliveries with both steps recorded.</p>
+        </div>`;
+}
+
 /* ================= DASHBOARD METRICS ================= */
 function countByStatus(deliveries) {
     const n = s => normaliseStatus(s);
@@ -1071,6 +1214,7 @@ function renderAll() {
     renderRiderDashboardCards();
     renderRiders();
     renderCustomers();
+    renderLeaderboard();
     renderAttendancePage();
     renderCharts();
 }
