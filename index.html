@@ -1,1606 +1,381 @@
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
-
 <meta charset="UTF-8">
-
-<meta
-    name="viewport"
-    content="width=device-width, initial-scale=1.0"
->
-
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Black Rabbit Logistics</title>
-
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-
-    <link rel="stylesheet" href="style.css">
-
+<link rel="stylesheet" href="style.css">
 </head>
-
-
 <body>
 
-
-<!-- =====================================================
-     AUTHENTICATION
-===================================================== -->
-
+<!-- ===================== AUTHENTICATION ===================== -->
 <div id="authScreen" class="auth-screen">
-
 <div class="auth-box">
 
 <div class="auth-brand">
-
-<div class="auth-logo">
-BR
+  <div class="auth-logo">BR</div>
+  <div><strong>Black Rabbit</strong><small>Logistics Management System</small></div>
 </div>
-
-<div>
-
-<strong>
-Black Rabbit
-</strong>
-
-<small>
-Logistics Management System
-</small>
-
-</div>
-
-</div>
-
 
 <div class="role-selector">
-
-<button
-id="riderRoleBtn"
-class="active"
-onclick="selectRole('rider')"
->
-Rider
-</button>
-
-<button
-id="adminRoleBtn"
-onclick="selectRole('admin')"
->
-Super Admin
-</button>
-
+  <button id="riderRoleBtn" class="active" onclick="selectRole('rider')">Rider</button>
+  <button id="adminRoleBtn" onclick="selectRole('admin')">Super Admin</button>
 </div>
-
 
 <!-- RIDER LOGIN -->
-
-<div
-id="riderLoginForm"
-class="auth-form"
->
-
-<span class="auth-label">
-RIDER PORTAL
-</span>
-
-<h1>
-Welcome back
-</h1>
-
-<p>
-Login to manage your deliveries.
-</p>
-
-<label>
-
-Phone number
-
-<input
-id="loginPhone"
-type="tel"
-placeholder="08012345678"
->
-
-</label>
-
-<label>
-
-Password
-
-<div class="password-field">
-
-<input
-id="loginPassword"
-type="password"
-placeholder="Enter your password"
->
-
-<button
-type="button"
-onclick="togglePassword('loginPassword',this)"
->
-Show
-</button>
-
+<div id="riderLoginForm" class="auth-form">
+  <span class="auth-label">RIDER PORTAL</span>
+  <h1>Welcome back</h1>
+  <p>Login to manage your deliveries.</p>
+  <label>Phone number
+    <input id="loginPhone" type="tel" placeholder="08012345678">
+  </label>
+  <label>Password
+    <div class="password-field">
+      <input id="loginPassword" type="password" placeholder="Enter your password">
+      <button type="button" onclick="togglePassword('loginPassword',this)">Show</button>
+    </div>
+  </label>
+  <div class="auth-row">
+    <label class="remember"><input type="checkbox"><span>Remember me</span></label>
+    <a href="#" onclick="forgotPassword(event)">Forgot password?</a>
+  </div>
+  <button class="auth-primary" onclick="riderLogin()">Login as Rider →</button>
+  <p class="auth-switch">Don't have a rider account?
+    <button onclick="showRegister()">Register now</button>
+  </p>
+  <div id="loginMessage" class="auth-message"></div>
 </div>
-
-</label>
-
-<div class="auth-row">
-
-<label class="remember">
-
-<input type="checkbox">
-
-<span>
-Remember me
-</span>
-
-</label>
-
-<a
-href="#"
-onclick="forgotPassword(event)"
->
-Forgot password?
-</a>
-
-</div>
-
-<button
-class="auth-primary"
-onclick="riderLogin()"
->
-Login as Rider →
-</button>
-
-<p class="auth-switch">
-
-Don't have a rider account?
-
-<button onclick="showRegister()">
-Register now
-</button>
-
-</p>
-
-<div
-id="loginMessage"
-class="auth-message"
-></div>
-
-</div>
-
 
 <!-- ADMIN LOGIN -->
-
-<div
-id="adminLoginForm"
-class="auth-form hidden-auth"
->
-
-<span class="auth-label">
-ADMINISTRATOR
-</span>
-
-<h1>
-Super Admin Login
-</h1>
-
-<p>
-Access the complete Black Rabbit Logistics management system.
-</p>
-
-<label>
-
-Phone number
-
-<input
-id="adminPhone"
-type="tel"
-placeholder="08000000000"
->
-
-</label>
-
-<label>
-
-Password
-
-<div class="password-field">
-
-<input
-id="adminPassword"
-type="password"
-placeholder="Enter admin password"
->
-
-<button
-type="button"
-onclick="togglePassword('adminPassword',this)"
->
-Show
-</button>
-
+<div id="adminLoginForm" class="auth-form hidden-auth">
+  <span class="auth-label">ADMINISTRATOR</span>
+  <h1>Super Admin Login</h1>
+  <p>Access the complete Black Rabbit Logistics management system.</p>
+  <label>Phone number
+    <input id="adminPhone" type="tel" placeholder="08000000000">
+  </label>
+  <label>Password
+    <div class="password-field">
+      <input id="adminPassword" type="password" placeholder="Enter admin password">
+      <button type="button" onclick="togglePassword('adminPassword',this)">Show</button>
+    </div>
+  </label>
+  <button class="auth-primary" onclick="adminLogin()">Login as Super Admin →</button>
+  <div id="adminMessage" class="auth-message"></div>
 </div>
-
-</label>
-
-<button
-class="auth-primary"
-onclick="adminLogin()"
->
-Login as Super Admin →
-</button>
-
-<div
-id="adminMessage"
-class="auth-message"
-></div>
-
-</div>
-
 
 <!-- RIDER REGISTRATION -->
-
-<div
-id="registerForm"
-class="auth-form hidden-auth"
->
-
-<span class="auth-label">
-JOIN THE TEAM
-</span>
-
-<h1>
-Create Rider Account
-</h1>
-
-<p>
-Register your details to become a Black Rabbit rider.
-</p>
-
-<div class="auth-grid">
-
-<label>
-
-First name
-
-<input
-id="regFirstName"
-type="text"
-placeholder="First name"
->
-
-</label>
-
-<label>
-
-Last name
-
-<input
-id="regLastName"
-type="text"
-placeholder="Last name"
->
-
-</label>
-
-</div>
-
-<label>
-
-Phone number
-
-<input
-id="regPhone"
-type="tel"
-placeholder="08012345678"
->
-
-</label>
-
-<label>
-
-Password
-
-<div class="password-field">
-
-<input
-id="regPassword"
-type="password"
-placeholder="Minimum 6 characters"
->
-
-<button
-type="button"
-onclick="togglePassword('regPassword',this)"
->
-Show
-</button>
-
-</div>
-
-</label>
-
-<label class="terms">
-
-<input
-id="regTerms"
-type="checkbox"
->
-
-<span>
-I agree to the rider terms and conditions.
-</span>
-
-</label>
-
-<button
-class="auth-primary"
-onclick="registerRider()"
->
-Create Rider Account →
-</button>
-
-<p class="auth-switch">
-
-Already have an account?
-
-<button onclick="showLogin()">
-Login
-</button>
-
-</p>
-
-<div
-id="registerMessage"
-class="auth-message"
-></div>
-
+<div id="registerForm" class="auth-form hidden-auth">
+  <span class="auth-label">JOIN THE TEAM</span>
+  <h1>Create Rider Account</h1>
+  <p>Register your details to become a Black Rabbit rider.</p>
+  <div class="auth-grid">
+    <label>First name <input id="regFirstName" type="text" placeholder="First name"></label>
+    <label>Last name <input id="regLastName" type="text" placeholder="Last name"></label>
+  </div>
+  <label>Phone number
+    <input id="regPhone" type="tel" placeholder="08012345678">
+  </label>
+  <label>Password
+    <div class="password-field">
+      <input id="regPassword" type="password" placeholder="Minimum 6 characters">
+      <button type="button" onclick="togglePassword('regPassword',this)">Show</button>
+    </div>
+  </label>
+  <label class="terms">
+    <input id="regTerms" type="checkbox">
+    <span>I agree to the rider terms and conditions.</span>
+  </label>
+  <button class="auth-primary" onclick="registerRider()">Create Rider Account →</button>
+  <p class="auth-switch">Already have an account?
+    <button onclick="showLogin()">Login</button>
+  </p>
+  <div id="registerMessage" class="auth-message"></div>
 </div>
 
 </div>
-
 </div>
 
-
-<!-- =====================================================
-     MAIN APPLICATION
-===================================================== -->
-
-<div
-id="mainApp"
-class="app"
-style="display:none;"
->
+<!-- ===================== MAIN APPLICATION ===================== -->
+<div id="mainApp" class="app" style="display:none;">
 
 <aside class="side">
-
-<div class="brand">
-
-<b>
-BR
-</b>
-
-<span>
-
-<strong>
-Black Rabbit
-</strong>
-
-<small>
-Logistics
-</small>
-
-</span>
-
-</div>
-
-<nav>
-
-<button
-class="active"
-data-page="dashboard"
->
-⌂ Dashboard
-</button>
-
-<button data-page="deliveries">
-▣ Deliveries
-</button>
-
-<button data-page="tracking">
-◎ Tracking
-</button>
-
-<button
-id="customersNav"
-data-page="customers"
->
-♙ Customers
-</button>
-
-<button
-id="driversNav"
-data-page="drivers"
->
-♟ Riders
-</button>
-
-<button
-id="analyticsNav"
-data-page="analytics"
->
-◔ Analytics
-</button>
-
-<button
-id="attendanceNav"
-data-page="attendance"
->
-◷ Attendance
-</button>
-
-</nav>
-
-<div class="bottom">
-
-<button data-page="settings">
-⚙ Settings
-</button>
-
-<div class="user">
-
-<b id="sidebarAvatar">
-FA
-</b>
-
-<span id="sidebarUser">
-
-Administrator
-
-<small>
-Super Admin
-</small>
-
-</span>
-
-</div>
-
-</div>
-
+  <div class="brand">
+    <b>BR</b>
+    <span><strong>Black Rabbit</strong><small>Logistics</small></span>
+  </div>
+  <nav>
+    <button class="active" data-page="dashboard">⌂ Dashboard</button>
+    <button data-page="deliveries">▣ Deliveries</button>
+    <button data-page="tracking">◎ Tracking</button>
+    <button id="customersNav" data-page="customers">♙ Customers</button>
+    <button id="driversNav" data-page="drivers">♟ Riders</button>
+    <button id="analyticsNav" data-page="analytics">◔ Analytics</button>
+    <button id="attendanceNav" data-page="attendance">◷ Attendance</button>
+  </nav>
+  <div class="bottom">
+    <button data-page="settings">⚙ Settings</button>
+    <div class="user">
+      <b id="sidebarAvatar">FA</b>
+      <span id="sidebarUser">Administrator<small>Super Admin</small></span>
+    </div>
+  </div>
 </aside>
-
 
 <main>
 
 <header>
-
-<button id="menu">
-☰
-</button>
-
-<div>
-
-<h1 id="title">
-Dashboard
-</h1>
-
-<p id="sub">
-Welcome back.
-</p>
-
-</div>
-
-<div class="actions">
-
-🔔
-
-<span id="headerAvatar">
-SA
-</span>
-
-<button
-class="logout-btn"
-onclick="logout()"
->
-Logout
-</button>
-
-</div>
-
+  <button id="menu">☰</button>
+  <div>
+    <h1 id="title">Dashboard</h1>
+    <p id="sub">Welcome back.</p>
+  </div>
+  <div class="actions">
+    🔔
+    <span id="headerAvatar">SA</span>
+    <button class="logout-btn" onclick="logout()">Logout</button>
+  </div>
 </header>
 
-
-<!-- =====================================================
-     DASHBOARD
-===================================================== -->
-
-<section
-id="dashboard"
-class="page"
->
-
-<div class="toolbar">
-
-<div>
-
-<strong id="dashboardGreeting">
-Delivery Operations
-</strong>
-
-</div>
-
-<button
-class="primary new"
->
-＋ New Delivery
-</button>
-
-</div>
-
-
-<div id="riderAttendanceCard"></div>
-
-
-<div id="riderEarningsCard"></div>
-
-
-<div class="stats">
-
-<article>
-
-<i>
-▣
-</i>
-
-<span>
-
-Total Deliveries
-
-<strong id="totalDeliveriesStat">
-0
-</strong>
-
-<em>
-Live
-</em>
-
-</span>
-
-</article>
-
-
-<article>
-
-<i>
-◷
-</i>
-
-<span>
-
-In Transit
-
-<strong id="inTransitStat">
-0
-</strong>
-
-<em>
-Active
-</em>
-
-</span>
-
-</article>
-
-
-<article>
-
-<i>
-✓
-</i>
-
-<span>
-
-Delivered
-
-<strong id="deliveredStat">
-0
-</strong>
-
-<em>
-Completed
-</em>
-
-</span>
-
-</article>
-
-
-<article>
-
-<i>
-!
-</i>
-
-<span>
-
-Pending
-
-<strong id="pendingStat">
-0
-</strong>
-
-<em class="red">
-Awaiting action
-</em>
-
-</span>
-
-</article>
-
-</div>
-
-
-<div class="cols">
-
-<div class="card">
-
-<h2>
-Delivery Overview
-</h2>
-
-<p>
-Delivery performance over the last 7 days
-</p>
-
-<canvas id="line"></canvas>
-
-</div>
-
-
-<div class="card">
-
-<h2>
-Delivery Status
-</h2>
-
-<p>
-Current order distribution
-</p>
-
-<div class="donut">
-
-<canvas id="donut"></canvas>
-
-<b id="donutTotal">
-0
-
-<small>
-Total
-</small>
-
-</b>
-
-</div>
-
-<div class="legend">
-
-● Delivered
-<strong id="deliveredPercent">0%</strong>
-
-<br>
-
-● In Transit
-<strong id="transitPercent">0%</strong>
-
-<br>
-
-● Pending
-<strong id="pendingPercent">0%</strong>
-
-</div>
-
-</div>
-
-</div>
-
-
-<div class="card">
-
-<div class="head">
-
-<div>
-
-<h2>
-Recent Deliveries
-</h2>
-
-<p>
-</p>
-
-</div>
-
-<button
-class="link"
-data-go="deliveries"
->
-View all →
-</button>
-
-</div>
-
-
-<div class="table">
-
-<table>
-
-<thead>
-
-<tr>
-
-<th>ID</th>
-<th>Customer</th>
-<th>Pickup</th>
-<th>Destination</th>
-<th>Rider</th>
-<th>Status</th>
-<th>Amount</th>
-<th>Action</th>
-
-</tr>
-
-</thead>
-
-<tbody id="recent"></tbody>
-
-</table>
-
-</div>
-
-</div>
-
+<!-- DASHBOARD -->
+<section id="dashboard" class="page">
+  <div class="toolbar">
+    <div><strong id="dashboardGreeting">Delivery Operations</strong></div>
+    <button class="primary new">＋ New Delivery</button>
+  </div>
+
+  <div id="riderAttendanceCard"></div>
+  <div id="riderEarningsCard"></div>
+
+  <div class="stats">
+    <article><i>▣</i><span>Total Deliveries<strong id="totalDeliveriesStat">0</strong><em>Live</em></span></article>
+    <article><i>◷</i><span>In Transit<strong id="inTransitStat">0</strong><em>Active</em></span></article>
+    <article><i>✓</i><span>Delivered<strong id="deliveredStat">0</strong><em>Completed</em></span></article>
+    <article><i>!</i><span>Pending<strong id="pendingStat">0</strong><em class="red">Awaiting action</em></span></article>
+  </div>
+
+  <div class="cols">
+    <div class="card">
+      <h2>Delivery Overview</h2>
+      <p>Delivery performance over the last 7 days</p>
+      <canvas id="line"></canvas>
+    </div>
+    <div class="card">
+      <h2>Delivery Status</h2>
+      <p>Current order distribution</p>
+      <div class="donut">
+        <canvas id="donut"></canvas>
+        <b id="donutTotal">0<small>Total</small></b>
+      </div>
+      <div class="legend">
+        ● Delivered <strong id="deliveredPercent">0%</strong><br>
+        ● In Transit <strong id="transitPercent">0%</strong><br>
+        ● Pending <strong id="pendingPercent">0%</strong>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="head">
+      <div><h2>Recent Deliveries</h2><p></p></div>
+      <button class="link" data-go="deliveries">View all →</button>
+    </div>
+    <div class="table">
+      <table>
+        <thead>
+          <tr>
+            <th>ID</th><th>Date</th><th>Customer</th><th>Pickup</th><th>Destination</th>
+            <th>Rider</th><th>Status</th><th>Amount</th><th>Action</th>
+          </tr>
+        </thead>
+        <tbody id="recent"></tbody>
+      </table>
+    </div>
+  </div>
 </section>
 
-
-<!-- =====================================================
-     DELIVERIES
-===================================================== -->
-
-<section
-id="deliveries"
-class="page hidden"
->
-
-<div class="toolbar">
-
-<input
-id="search"
-placeholder="⌕ Search deliveries..."
->
-
-<button
-class="primary new"
->
-＋ New Delivery
-</button>
-
-</div>
-
-
-<div class="card">
-
-<div class="tabs">
-
-<button
-class="selected"
-onclick="setDeliveryFilter('All',this)"
->
-All
-</button>
-
-<button
-onclick="setDeliveryFilter('Pending',this)"
->
-Pending
-</button>
-
-<button
-onclick="setDeliveryFilter('Assigned',this)"
->
-Assigned
-</button>
-
-<button
-onclick="setDeliveryFilter('Picked Up',this)"
->
-Picked Up
-</button>
-
-<button
-onclick="setDeliveryFilter('In Transit',this)"
->
-In Transit
-</button>
-
-<button
-onclick="setDeliveryFilter('Delivered',this)"
->
-Delivered
-</button>
-
-</div>
-
-
-<div class="table">
-
-<table>
-
-<thead>
-
-<tr>
-
-<th>ID</th>
-<th>Customer</th>
-<th>Pickup</th>
-<th>Destination</th>
-<th>Rider</th>
-<th>Status</th>
-<th>Amount</th>
-<th>Actions</th>
-
-</tr>
-
-</thead>
-
-<tbody id="allRows"></tbody>
-
-</table>
-
-</div>
-
-</div>
-
+<!-- DELIVERIES -->
+<section id="deliveries" class="page hidden">
+  <div class="toolbar">
+    <input id="search" placeholder="⌕ Search deliveries...">
+    <button class="primary new">＋ New Delivery</button>
+  </div>
+  <div class="card">
+    <div class="tabs">
+      <button class="selected" onclick="setDeliveryFilter('All',this)">All</button>
+      <button onclick="setDeliveryFilter('Pending',this)">Pending</button>
+      <button onclick="setDeliveryFilter('Assigned',this)">Assigned</button>
+      <button onclick="setDeliveryFilter('Picked Up',this)">Picked Up</button>
+      <button onclick="setDeliveryFilter('In Transit',this)">In Transit</button>
+      <button onclick="setDeliveryFilter('Delivered',this)">Delivered</button>
+    </div>
+    <div class="table">
+      <table>
+        <thead>
+          <tr>
+            <th>ID</th><th>Date</th><th>Customer</th><th>Pickup</th><th>Destination</th>
+            <th>Rider</th><th>Status</th><th>Amount</th><th>Actions</th>
+          </tr>
+        </thead>
+        <tbody id="allRows"></tbody>
+      </table>
+    </div>
+  </div>
 </section>
 
-
-<!-- =====================================================
-     TRACKING
-===================================================== -->
-
-<section
-id="tracking"
-class="page hidden"
->
-
-<div class="card">
-
-<h2>
-Track a Delivery
-</h2>
-
-<p>
-Enter a delivery ID to see its current progress.
-</p>
-
-<div class="track">
-
-<input
-id="trackId"
-placeholder="Example: BR-10482"
->
-
-<button
-class="primary"
-id="track"
->
-Track Delivery
-</button>
-
-</div>
-
-</div>
-
-
-<div
-id="trackingResult"
-class="card hidden"
->
-</div>
-
+<!-- TRACKING -->
+<section id="tracking" class="page hidden">
+  <div class="card">
+    <h2>Track a Delivery</h2>
+    <p>Enter a delivery ID to see its current progress.</p>
+    <div class="track">
+      <input id="trackId" placeholder="Example: BR-10482">
+      <button class="primary" id="track">Track Delivery</button>
+    </div>
+  </div>
+  <div id="trackingResult" class="card hidden"></div>
 </section>
 
-
-<!-- =====================================================
-     CUSTOMERS
-===================================================== -->
-
-<section
-id="customers"
-class="page hidden"
->
-
-<div class="card">
-
-<h2>
-Customers
-</h2>
-
-<p>
-Customer profiles based on delivery records.
-</p>
-
-<div
-id="customerList"
-class="people"
-></div>
-
-</div>
-
+<!-- CUSTOMERS -->
+<section id="customers" class="page hidden">
+  <div class="card">
+    <h2>Customers</h2>
+    <p>Customer profiles based on delivery records.</p>
+    <div id="customerList" class="people"></div>
+  </div>
 </section>
 
-
-<!-- =====================================================
-     DRIVERS
-===================================================== -->
-
-<section
-id="drivers"
-class="page hidden"
->
-
-<div class="card">
-
-<h2>
-Drivers / Riders
-</h2>
-
-<p>
-Registered Black Rabbit riders and their current activity.
-</p>
-
-<div
-id="driverList"
-class="people"
-></div>
-
-</div>
-
+<!-- RIDERS -->
+<section id="drivers" class="page hidden">
+  <div class="card">
+    <h2>Drivers / Riders</h2>
+    <p>Registered Black Rabbit riders and their current activity.</p>
+    <div id="driverList" class="people"></div>
+  </div>
 </section>
 
-
-<!-- =====================================================
-     ANALYTICS
-===================================================== -->
-
-<section
-id="analytics"
-class="page hidden"
->
-
-<div class="stats">
-
-<article>
-
-<span>
-
-Success Rate
-
-<strong id="successRate">
-0%
-</strong>
-
-<em>
-Live
-</em>
-
-</span>
-
-</article>
-
-
-<article>
-
-<span>
-
-Avg. Delivery Time
-
-<strong>
-— 
-</strong>
-
-<em>
-Coming later
-</em>
-
-</span>
-
-</article>
-
-
-<article>
-
-<span>
-
-Revenue
-
-<strong id="revenueStat">
-₦0
-</strong>
-
-<em>
-From deliveries
-</em>
-
-</span>
-
-</article>
-
-</div>
-
-
-<div class="card">
-
-<h2>
-Revenue & Deliveries
-</h2>
-
-<p>
-Current delivery performance
-</p>
-
-<canvas id="bar"></canvas>
-
-</div>
-
+<!-- ANALYTICS -->
+<section id="analytics" class="page hidden">
+  <div class="stats">
+    <article><span>Success Rate<strong id="successRate">0%</strong><em>Live</em></span></article>
+    <article><span>Avg. Delivery Time<strong>—</strong><em>Coming later</em></span></article>
+    <article><span>Revenue<strong id="revenueStat">₦0</strong><em>From deliveries</em></span></article>
+  </div>
+  <div class="card">
+    <h2>Revenue &amp; Deliveries</h2>
+    <p>Current delivery performance</p>
+    <canvas id="bar"></canvas>
+  </div>
 </section>
 
-
-<!-- =====================================================
-     ATTENDANCE
-===================================================== -->
-
-<section
-id="attendance"
-class="page hidden"
->
-
-<div id="attendanceContent"></div>
-
+<!-- ATTENDANCE -->
+<section id="attendance" class="page hidden">
+  <div id="attendanceContent"></div>
 </section>
 
-
-<!-- =====================================================
-     SETTINGS
-===================================================== -->
-
-<section
-id="settings"
-class="page hidden"
->
-
-<div class="card settings">
-
-<h2>
-Settings
-</h2>
-
-<p>
-Configure your delivery management system.
-</p>
-
-<label>
-
-Company name
-
-<input
-value="Black Rabbit Logistics"
->
-
-</label>
-
-<label>
-
-Currency
-
-<input
-value="NGN (₦)"
->
-
-</label>
-
-<label>
-
-Notification email
-
-<input
-value="admin@blackrabbitlogistics.com"
->
-
-</label>
-
-<button class="primary">
-Save Changes
-</button>
-
-</div>
-
+<!-- SETTINGS -->
+<section id="settings" class="page hidden">
+  <div class="card settings">
+    <h2>Settings</h2>
+    <p>Configure your delivery management system.</p>
+    <label>Company name <input value="Black Rabbit Logistics"></label>
+    <label>Currency <input value="NGN (₦)"></label>
+    <label>Notification email <input value="admin@blackrabbitlogistics.com"></label>
+    <button class="primary">Save Changes</button>
+  </div>
 </section>
-
 
 </main>
-
 </div>
 
-
-<!-- =====================================================
-     DELIVERY MODAL
-===================================================== -->
-
-<div
-id="modal"
-class="modal"
->
-
+<!-- ===================== DELIVERY MODAL ===================== -->
+<div id="modal" class="modal">
 <div>
-
-<button
-id="close"
-type="button"
->
-×
-</button>
-
-<h2 id="modalTitle">
-Create New Delivery
-</h2>
-
-<p
-id="modalDescription"
-style="color:#8993a1;font-size:10px;margin-top:5px;"
->
-Create and assign a delivery.
-</p>
-
-
-<form id="form">
-
-<input
-type="hidden"
-id="deliveryEditId"
->
-
-
-<div class="form-grid">
-
-<div class="form-group">
-
-<label class="form-label">
-Customer name
-</label>
-
-<input
-id="deliveryCustomer"
-required
-placeholder="Customer name"
->
-
-</div>
-
-
-<div class="form-group">
-
-<label class="form-label">
-Phone number
-</label>
-
-<input
-id="deliveryPhone"
-required
-placeholder="08012345678"
->
-
-</div>
-
-</div>
-
-
-<div class="form-grid">
-
-<div class="form-group">
-
-<label class="form-label">
-Pickup address
-</label>
-
-<input
-id="deliveryPickup"
-required
-placeholder="Pickup address"
->
-
-</div>
-
-
-<div class="form-group">
-
-<label class="form-label">
-Delivery address
-</label>
-
-<input
-id="deliveryDestination"
-required
-placeholder="Delivery address"
->
-
-</div>
-
-</div>
-
-
-<div class="form-group">
-
-<label class="form-label">
-Package description
-</label>
-
-<input
-id="deliveryPackage"
-placeholder="What is being delivered?"
->
-
-</div>
-
-
-<div class="form-grid">
-
-<div class="form-group">
-
-<label class="form-label">
-Amount (₦)
-</label>
-
-<input
-id="deliveryAmount"
-type="number"
-min="0"
-placeholder="8500"
->
-
-</div>
-
-
-<div class="form-group">
-
-<label class="form-label">
-Rider earning (₦)
-</label>
-
-<input
-id="deliveryRiderEarning"
-type="number"
-min="0"
-placeholder="2000"
->
-<small style="color:#8993a1;font-size:8px;">
-Only Super Admin can set or change rider earnings.
-</small>
-
-</div>
-
-
-<div class="form-group">
-
-<label class="form-label">
-Assigned rider
-</label>
-
-<select id="deliveryRider">
-<option value="">
-Unassigned
-</option>
-</select>
-
-</div>
-
-</div>
-
-
-<div class="form-group">
-
-<label class="form-label">
-Status
-</label>
-
-<select id="deliveryStatus">
-
-<option value="Pending">
-Pending
-</option>
-
-<option value="Assigned">
-Assigned
-</option>
-
-<option value="Picked Up">
-Picked Up
-</option>
-
-<option value="In Transit">
-In Transit
-</option>
-
-<option value="Delivered">
-Delivered
-</option>
-
-<option value="Cancelled">
-Cancelled
-</option>
-
-</select>
-
-</div>
-
-
-<div class="form-group">
-
-<label class="form-label">
-Notes
-</label>
-
-<textarea
-id="deliveryNotes"
-placeholder="Additional delivery notes..."
-></textarea>
-
-</div>
-
-
-<div
-id="deliveryHistory"
-class="delivery-history hidden"
->
-</div>
-
-
-<div class="modal-actions">
-
-<button
-type="button"
-class="secondary"
-onclick="closeDeliveryModal()"
->
-Cancel
-</button>
-
-<button
-type="submit"
-class="primary"
-id="saveDeliveryButton"
->
-Create Delivery
-</button>
-
-</div>
-
-</form>
+  <button id="close" type="button">×</button>
+  <h2 id="modalTitle">Create New Delivery</h2>
+  <p id="modalDescription" style="color:#8993a1;font-size:10px;margin-top:5px;">Create and assign a delivery.</p>
+
+  <form id="form">
+    <input type="hidden" id="deliveryEditId">
+
+    <div class="form-grid">
+      <div class="form-group">
+        <label class="form-label">Customer name</label>
+        <input id="deliveryCustomer" required placeholder="Customer name">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Phone number</label>
+        <input id="deliveryPhone" required placeholder="08012345678">
+      </div>
+    </div>
+
+    <div class="form-grid">
+      <div class="form-group">
+        <label class="form-label">Pickup address</label>
+        <input id="deliveryPickup" required placeholder="Pickup address">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Delivery address</label>
+        <input id="deliveryDestination" required placeholder="Delivery address">
+      </div>
+    </div>
+
+    <div class="form-group">
+      <label class="form-label">Package description</label>
+      <input id="deliveryPackage" placeholder="What is being delivered?">
+    </div>
+    <div class="form-group">
+      <label class="form-label">Delivery date</label>
+      <input id="deliveryDate" type="date" required>
+    </div>
+
+    <div class="form-grid">
+      <div class="form-group">
+        <label class="form-label">Amount (₦)</label>
+        <input id="deliveryAmount" type="number" min="0" placeholder="8500">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Rider earning (₦)</label>
+        <input id="deliveryRiderEarning" type="number" min="0" placeholder="2000">
+        <small style="color:#8993a1;font-size:8px;">Only Super Admin can set or change rider earnings.</small>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Assigned rider</label>
+        <select id="deliveryRider"><option value="">Unassigned</option></select>
+      </div>
+    </div>
+
+    <div class="form-group">
+      <label class="form-label">Status</label>
+      <select id="deliveryStatus">
+        <option value="Pending">Pending</option>
+        <option value="Assigned">Assigned</option>
+        <option value="Picked Up">Picked Up</option>
+        <option value="In Transit">In Transit</option>
+        <option value="Delivered">Delivered</option>
+        <option value="Cancelled">Cancelled</option>
+      </select>
+    </div>
+
+    <div class="form-group">
+      <label class="form-label">Notes</label>
+      <textarea id="deliveryNotes" placeholder="Additional delivery notes..."></textarea>
+    </div>
+
+    <div id="deliveryHistory" class="delivery-history hidden"></div>
+
+    <div class="modal-actions">
+      <button type="button" class="secondary" onclick="closeDeliveryModal()">Cancel</button>
+      <button type="submit" class="primary" id="saveDeliveryButton">Create Delivery</button>
+    </div>
+  </form>
 </div>
 </div>
-<!-- Both delivery-modal containers are now closed correctly. -->
 
-<!-- FIREBASE LIBRARIES -->
-<script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore-compat.js"></script>
-
-<!-- FIREBASE CONFIGURATION AND CLOUD SYNC -->
-<script>
-const FIREBASE_CONFIG = {
-    apiKey: "AIzaSyAY2GTNQg1SJIFccGj4fb34kbHlnnaIylI",
-    authDomain: "black-rabbit-logistics.firebaseapp.com",
-    projectId: "black-rabbit-logistics",
-    storageBucket: "black-rabbit-logistics.firebasestorage.app",
-    messagingSenderId: "859935511447",
-    appId: "1:859935511447:web:b2b2bf09f1d6d692406ad2"
-};
-
-(function () {
-    const SYNC_KEYS = [
-        "blackRabbitRiders",
-        "blackRabbitDeliveries",
-        "blackRabbitAttendance",
-        "blackRabbitRiderPayments"
-    ];
-
-    let db;
-    let applyingCloud = false;
-    let syncTimer;
-
-    try {
-        if (!firebase.apps.length) {
-            firebase.initializeApp(FIREBASE_CONFIG);
-        }
-        db = firebase.firestore();
-        console.log("Black Rabbit: Firebase initialized.");
-    } catch (error) {
-        console.error("Firebase initialization failed:", error);
-        window.blackRabbitCloudReady = false;
-        return;
-    }
-
-    const docRef = db.collection("blackRabbit").doc("main");
-    const originalSetItem = Storage.prototype.setItem;
-    const originalGetItem = Storage.prototype.getItem;
-    const originalRemoveItem = Storage.prototype.removeItem;
-
-    function updateStatus(message) {
-        const el = document.getElementById("cloudSyncStatus");
-        if (el) el.textContent = message;
-    }
-
-    function readLocalData() {
-        const data = {};
-
-        SYNC_KEYS.forEach(function (key) {
-            const value = originalGetItem.call(localStorage, key);
-            if (value !== null) {
-                try {
-                    data[key] = JSON.parse(value);
-                } catch (error) {
-                    data[key] = value;
-                }
-            }
-        });
-
-        return data;
-    }
-
-    async function uploadLocalData() {
-        if (applyingCloud) return;
-
-        try {
-            await docRef.set(readLocalData(), { merge: true });
-            updateStatus("Cloud Sync: Connected");
-        } catch (error) {
-            updateStatus("Cloud Sync: Error");
-            console.error("Cloud upload failed:", error);
-        }
-    }
-
-    function scheduleSync() {
-        if (applyingCloud) return;
-        clearTimeout(syncTimer);
-        syncTimer = setTimeout(uploadLocalData, 800);
-    }
-
-    Storage.prototype.setItem = function (key, value) {
-        originalSetItem.call(this, key, value);
-
-        if (
-            this === localStorage &&
-            SYNC_KEYS.includes(key) &&
-            !applyingCloud
-        ) {
-            scheduleSync();
-        }
-    };
-
-    Storage.prototype.removeItem = function (key) {
-        originalRemoveItem.call(this, key);
-
-        if (
-            this === localStorage &&
-            SYNC_KEYS.includes(key) &&
-            !applyingCloud
-        ) {
-            scheduleSync();
-        }
-    };
-
-    window.blackRabbitCloudForceSync = uploadLocalData;
-    window.blackRabbitCloudReady = false;
-
-    docRef.onSnapshot(function (snapshot) {
-        window.blackRabbitCloudReady = true;
-        updateStatus("Cloud Sync: Connected");
-
-        if (!snapshot.exists) {
-            uploadLocalData();
-            return;
-        }
-
-        const cloudData = snapshot.data();
-        applyingCloud = true;
-
-        try {
-            SYNC_KEYS.forEach(function (key) {
-                if (
-                    Object.prototype.hasOwnProperty.call(cloudData, key) &&
-                    cloudData[key] !== null
-                ) {
-                    originalSetItem.call(
-                        localStorage,
-                        key,
-                        JSON.stringify(cloudData[key])
-                    );
-                }
-            });
-        } finally {
-            applyingCloud = false;
-        }
-
-        if (typeof window.refreshAllDeliveryViews === "function") {
-            window.refreshAllDeliveryViews();
-        }
-
-        if (typeof window.phase2Refresh === "function") {
-            window.phase2Refresh();
-        }
-    }, function (error) {
-        window.blackRabbitCloudReady = false;
-        updateStatus("Cloud Sync: Error");
-        console.error("Firebase listener failed:", error);
-    });
-})();
-<script>
-alert("HTML is working. Next, loading script.js...");
-</script>
-<!-- LOAD THE MAIN APP SCRIPT ONCE -->
+<!-- ONE SCRIPT: includes Firebase cloud sync + the whole app -->
 <script src="./script.js"></script>
-
-<!-- AUTHENTICATION DIAGNOSTIC -->
-<script>
-window.addEventListener("load", function () {
-    const requiredFunctions = [
-        "selectRole",
-        "riderLogin",
-        "adminLogin",
-        "showRegister",
-        "registerRider",
-        "showLogin",
-        "togglePassword"
-    ];
-
-    const missing = requiredFunctions.filter(function (name) {
-        return typeof window[name] !== "function";
-    });
-
-    if (missing.length) {
-        console.error(
-            "Black Rabbit authentication functions missing:",
-            missing
-        );
-
-        alert(
-            "Login system error. Missing functions: " +
-            missing.join(", ") +
-            ". Check script.js and the browser console."
-        );
-        return;
-    }
-
-    console.log("Black Rabbit: Authentication functions loaded.");
-
-    const authScreen = document.getElementById("authScreen");
-    const riderForm = document.getElementById("riderLoginForm");
-    const adminForm = document.getElementById("adminLoginForm");
-    const registerForm = document.getElementById("registerForm");
-
-    if (!authScreen || !riderForm || !adminForm || !registerForm) {
-        console.error("Black Rabbit: An authentication HTML element is missing.");
-        return;
-    }
-
-    console.log("Black Rabbit: Authentication HTML elements found.");
-});
-</script>
 
 </body>
 </html>
-
-
-    
-        
-    
-            
