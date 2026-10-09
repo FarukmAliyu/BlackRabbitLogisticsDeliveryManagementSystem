@@ -1386,11 +1386,11 @@ Create Delivery
 </div>
 
 </form>
-
 </div>
+</div>
+<!-- Both delivery-modal containers are now closed correctly. -->
 
-
-<!-- FIREBASE LIBRARIES: LOAD ONCE -->
+<!-- FIREBASE LIBRARIES -->
 <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore-compat.js"></script>
 
@@ -1421,22 +1421,22 @@ const FIREBASE_CONFIG = {
         if (!firebase.apps.length) {
             firebase.initializeApp(FIREBASE_CONFIG);
         }
-
         db = firebase.firestore();
-        console.log("Black Rabbit Firebase Cloud Sync initialized.");
+        console.log("Black Rabbit: Firebase initialized.");
     } catch (error) {
         console.error("Firebase initialization failed:", error);
+        window.blackRabbitCloudReady = false;
         return;
     }
 
     const docRef = db.collection("blackRabbit").doc("main");
     const originalSetItem = Storage.prototype.setItem;
-    const originalRemoveItem = Storage.prototype.removeItem;
     const originalGetItem = Storage.prototype.getItem;
+    const originalRemoveItem = Storage.prototype.removeItem;
 
     function updateStatus(message) {
-        const element = document.getElementById("cloudSyncStatus");
-        if (element) element.textContent = message;
+        const el = document.getElementById("cloudSyncStatus");
+        if (el) el.textContent = message;
     }
 
     function readLocalData() {
@@ -1444,11 +1444,10 @@ const FIREBASE_CONFIG = {
 
         SYNC_KEYS.forEach(function (key) {
             const value = originalGetItem.call(localStorage, key);
-
             if (value !== null) {
                 try {
                     data[key] = JSON.parse(value);
-                } catch {
+                } catch (error) {
                     data[key] = value;
                 }
             }
@@ -1463,16 +1462,14 @@ const FIREBASE_CONFIG = {
         try {
             await docRef.set(readLocalData(), { merge: true });
             updateStatus("Cloud Sync: Connected");
-            console.log("Black Rabbit data synced to cloud.");
         } catch (error) {
             updateStatus("Cloud Sync: Error");
-            console.error("Cloud sync failed:", error);
+            console.error("Cloud upload failed:", error);
         }
     }
 
     function scheduleSync() {
         if (applyingCloud) return;
-
         clearTimeout(syncTimer);
         syncTimer = setTimeout(uploadLocalData, 800);
     }
@@ -1502,60 +1499,107 @@ const FIREBASE_CONFIG = {
     };
 
     window.blackRabbitCloudForceSync = uploadLocalData;
+    window.blackRabbitCloudReady = false;
 
-    docRef.onSnapshot(
-        function (snapshot) {
-            window.blackRabbitCloudReady = true;
-            updateStatus("Cloud Sync: Connected");
+    docRef.onSnapshot(function (snapshot) {
+        window.blackRabbitCloudReady = true;
+        updateStatus("Cloud Sync: Connected");
 
-            if (!snapshot.exists) {
-                // Initialize the cloud document from this device.
-                uploadLocalData();
-                return;
-            }
-
-            const cloudData = snapshot.data();
-            applyingCloud = true;
-
-            try {
-                SYNC_KEYS.forEach(function (key) {
-                    if (
-                        Object.prototype.hasOwnProperty.call(cloudData, key) &&
-                        cloudData[key] !== null
-                    ) {
-                        originalSetItem.call(
-                            localStorage,
-                            key,
-                            JSON.stringify(cloudData[key])
-                        );
-                    }
-                });
-            } finally {
-                applyingCloud = false;
-            }
-
-            console.log("Cloud data received and applied.");
-
-            if (typeof window.refreshAllDeliveryViews === "function") {
-                window.refreshAllDeliveryViews();
-            }
-
-            if (typeof window.phase2Refresh === "function") {
-                window.phase2Refresh();
-            }
-        },
-        function (error) {
-            updateStatus("Cloud Sync: Error");
-            console.error("Cloud listener error:", error);
+        if (!snapshot.exists) {
+            uploadLocalData();
+            return;
         }
-    );
+
+        const cloudData = snapshot.data();
+        applyingCloud = true;
+
+        try {
+            SYNC_KEYS.forEach(function (key) {
+                if (
+                    Object.prototype.hasOwnProperty.call(cloudData, key) &&
+                    cloudData[key] !== null
+                ) {
+                    originalSetItem.call(
+                        localStorage,
+                        key,
+                        JSON.stringify(cloudData[key])
+                    );
+                }
+            });
+        } finally {
+            applyingCloud = false;
+        }
+
+        if (typeof window.refreshAllDeliveryViews === "function") {
+            window.refreshAllDeliveryViews();
+        }
+
+        if (typeof window.phase2Refresh === "function") {
+            window.phase2Refresh();
+        }
+    }, function (error) {
+        window.blackRabbitCloudReady = false;
+        updateStatus("Cloud Sync: Error");
+        console.error("Firebase listener failed:", error);
+    });
 })();
 </script>
 
-<!-- MAIN DASHBOARD SCRIPT: LOAD EXACTLY ONCE -->
-<script src="script.js"></script>
+<!-- LOAD THE MAIN APP SCRIPT ONCE -->
+<script src="./script.js"></script>
+
+<!-- AUTHENTICATION DIAGNOSTIC -->
+<script>
+window.addEventListener("load", function () {
+    const requiredFunctions = [
+        "selectRole",
+        "riderLogin",
+        "adminLogin",
+        "showRegister",
+        "registerRider",
+        "showLogin",
+        "togglePassword"
+    ];
+
+    const missing = requiredFunctions.filter(function (name) {
+        return typeof window[name] !== "function";
+    });
+
+    if (missing.length) {
+        console.error(
+            "Black Rabbit authentication functions missing:",
+            missing
+        );
+
+        alert(
+            "Login system error. Missing functions: " +
+            missing.join(", ") +
+            ". Check script.js and the browser console."
+        );
+        return;
+    }
+
+    console.log("Black Rabbit: Authentication functions loaded.");
+
+    const authScreen = document.getElementById("authScreen");
+    const riderForm = document.getElementById("riderLoginForm");
+    const adminForm = document.getElementById("adminLoginForm");
+    const registerForm = document.getElementById("registerForm");
+
+    if (!authScreen || !riderForm || !adminForm || !registerForm) {
+        console.error("Black Rabbit: An authentication HTML element is missing.");
+        return;
+    }
+
+    console.log("Black Rabbit: Authentication HTML elements found.");
+});
+</script>
 
 </body>
 </html>
 
-   
+
+    
+        
+    
+            
