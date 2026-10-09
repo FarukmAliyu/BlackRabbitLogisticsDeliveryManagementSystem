@@ -477,6 +477,8 @@ function goToPage(page) {
     document.querySelectorAll(".page").forEach(s => s.classList.toggle("hidden", s.id !== page));
     document.querySelectorAll("[data-page]").forEach(b =>
         b.classList.toggle("active", b.dataset.page === page));
+    // close the mobile side menu so the page can be scrolled
+    document.querySelector(".side")?.classList.remove("open");
     setText("title", PAGE_INFO[page][0]);
     setText("sub", PAGE_INFO[page][1]);
 
@@ -490,6 +492,13 @@ document.querySelectorAll("[data-go]").forEach(b =>
     b.addEventListener("click", () => goToPage(b.dataset.go)));
 $("menu")?.addEventListener("click", () =>
     document.querySelector(".side")?.classList.toggle("open"));
+
+/* Tap anywhere outside the open side menu to close it */
+document.addEventListener("click", e => {
+    const side = document.querySelector(".side");
+    if (side?.classList.contains("open") && !e.target.closest(".side, #menu"))
+        side.classList.remove("open");
+});
 
 /* ================= DELIVERY MODAL ================= */
 function fillRiderOptions(selected = "") {
