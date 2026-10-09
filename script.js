@@ -3,6 +3,158 @@
    Fixes: duplicate load guard, rider approval, rider status
    updates, pending riders in dropdown, GPS-free check-out.
 ========================================================= */
+/* =========================================================
+   PART 1 - FIREBASE CLOUD SYNC (loads its own libraries)
+   The app still works from localStorage if Firebase fails.
+========================================================= */
+(function cloudSync() {
+    const FIREBASE_CONFIG = {
+        apiKey: "AIzaSyAY2GTNQg1SJIFccGj4fb34kbHlnnaIylI",
+        authDomain: "black-rabbit-logistics.firebaseapp.com",
+        projectId: "black-rabbit-logistics",
+        storageBucket: "black-rabbit-logistics.firebasestorage.app",
+        messagingSenderId: "859935511447",
+        appId: "1:859935511447:web:b2b2bf09f1d6d692406ad2"
+    };
+    const SYNC_KEYS = [
+        "blackRabbitRiders",
+        "blackRabbitDeliveries",
+        "blackRabbitAttendance",
+        "blackRabbitRiderPayments"
+    ];
+    const LIBS = [
+        "https://www.gstatic.com/firebasejs/10.12.5/firebase-app-compat.js",
+        "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore-compat.js"
+    ];
+
+    const origSet = Storage.prototype.setItem;
+    const origGet = Storage.prototype.getItem;
+    const origRemove = Storage.prototype.removeItem;
+
+    let docRef = null;
+    let applyingCloud = false;
+    let pendingLocal = false;   // local change made before cloud was ready
+    let firstSnapshot = true;
+    let syncTimer;
+
+    window.blackRabbitCloudReady = false;
+
+    function updateStatus(msg) {
+        const el = document.getElementById("cloudSyncStatus");
+        if (el) el.textContent = msg;
+    }
+    function readLocalData() {
+        const data = {};
+        SYNC_KEYS.forEach(k => {
+            const v = origGet.call(localStorage, k);
+            if (v !== null) {
+                try { data[k] = JSON.parse(v); } catch (e) { data[k] = v; }
+            }
+        });
+        return data;
+    }
+    async function uploadLocalData() {
+        if (applyingCloud || !docRef) return;
+        try {
+            await docRef.set(readLocalData(), { merge: true });
+            updateStatus("Cloud Sync: Connected");
+        } catch (e) {
+            updateStatus("Cloud Sync: Error");
+            console.error("Cloud upload failed:", e);
+        }
+    }
+    function scheduleSync() {
+        if (applyingCloud) return;
+        if (!docRef) { pendingLocal = true; return; }
+        clearTimeout(syncTimer);
+        syncTimer = setTimeout(uploadLocalData, 800);
+    }
+
+    Storage.prototype.setItem = function (key, value) {
+        origSet.call(this, key, value);
+        if (this === localStorage && SYNC_KEYS.includes(key)) scheduleSync();
+    };
+    Storage.prototype.removeItem = function (key) {
+        origRemove.call(this, key);
+        if (this === localStorage && SYNC_KEYS.includes(key)) scheduleSync();
+    };
+    window.blackRabbitCloudForceSync = uploadLocalData;
+
+    function mergeById(cloudArr, localArr) {
+        const map = new Map();
+        (cloudArr || []).forEach(i => map.set(String(i.id || i.phone), i));
+        (localArr || []).forEach(i => map.set(String(i.id || i.phone), i));
+        return Array.from(map.values());
+    }
+    function refreshViews() {
+        if (typeof window.refreshAllDeliveryViews === "function") window.refreshAllDeliveryViews();
+    }
+
+    function listen() {
+        docRef.onSnapshot(snapshot => {
+            window.blackRabbitCloudReady = true;
+            updateStatus("Cloud Sync: Connected");
+
+            if (!snapshot.exists) { uploadLocalData(); return; }
+            const cloud = snapshot.data();
+
+            applyingCloud = true;
+            try {
+                SYNC_KEYS.forEach(k => {
+                    if (!Object.prototype.hasOwnProperty.call(cloud, k) || cloud[k] === null) return;
+                    let value = cloud[k];
+                    // Protect anything created locally before the cloud connected
+                    if (firstSnapshot && pendingLocal && Array.isArray(value)) {
+                        const lv = origGet.call(localStorage, k);
+                        try {
+                            const local = lv ? JSON.parse(lv) : [];
+                            if (Array.isArray(local)) value = mergeById(value, local);
+                        } catch (e) { /* keep cloud value */ }
+                    }
+                    origSet.call(localStorage, k, JSON.stringify(value));
+                });
+            } finally {
+                applyingCloud = false;
+            }
+
+            const needsUpload = firstSnapshot && pendingLocal;
+            firstSnapshot = false;
+            pendingLocal = false;
+            refreshViews();
+            if (needsUpload) uploadLocalData();
+        }, error => {
+            window.blackRabbitCloudReady = false;
+            updateStatus("Cloud Sync: Error");
+            console.error("Firebase listener failed:", error);
+        });
+    }
+
+    function loadScript(src) {
+        return new Promise((resolve, reject) => {
+            const s = document.createElement("script");
+            s.src = src;
+            s.onload = resolve;
+            s.onerror = () => reject(new Error("Could not load " + src));
+            document.head.appendChild(s);
+        });
+    }
+
+    LIBS.reduce((p, src) => p.then(() => loadScript(src)), Promise.resolve())
+        .then(() => {
+            if (!firebase.apps.length) firebase.initializeApp(FIREBASE_CONFIG);
+            docRef = firebase.firestore().collection("blackRabbit").doc("main");
+            console.log("Black Rabbit: Firebase initialized.");
+            listen();
+        })
+        .catch(err => {
+            console.error("Firebase unavailable, running on local data only:", err);
+            updateStatus("Cloud Sync: Offline");
+        });
+})();
+
+/* =========================================================
+   PART 2 - APPLICATION
+========================================================= */
 (() => {
 "use strict";
 
@@ -136,6 +288,18 @@ function canSeeDelivery(d) { return isAdmin() || deliveryRiderId(d) === currentR
 function visibleDeliveries() { return getDeliveries().filter(canSeeDelivery); }
 function generateId(prefix = "BR") {
     return `${prefix}-${Date.now().toString().slice(-8)}${Math.floor(Math.random() * 90 + 10)}`;
+}
+/* Delivery date helpers (stored as YYYY-MM-DD) */
+function entryDate(d) {
+    if (d.deliveryDate) return d.deliveryDate;
+    if (d.createdAt) { const t = new Date(d.createdAt); if (!Number.isNaN(t.getTime())) return todayKey(t); }
+    return "";
+}
+function formatDay(key) {
+    const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(key || "");
+    if (!m) return "—";
+    return new Date(+m[1], +m[2] - 1, +m[3])
+        .toLocaleDateString("en-NG", { day: "numeric", month: "short", year: "numeric" });
 }
 function isRiderApproved(r) {
     return r.active !== false && !["Disabled", "Pending Approval", "Pending", "Rejected"].includes(r.status);
@@ -342,6 +506,7 @@ function openDeliveryModal(delivery = null) {
             deliveryPackage: delivery.packageDescription || delivery.package || "",
             deliveryAmount: delivery.amount ?? "",
             deliveryRiderEarning: delivery.riderEarning ?? "",
+            deliveryDate: entryDate(delivery) || todayKey(),
             deliveryStatus: normaliseStatus(delivery.status),
             deliveryNotes: delivery.notes || ""
         };
@@ -349,6 +514,7 @@ function openDeliveryModal(delivery = null) {
         renderDeliveryHistory(delivery);
     } else {
         if ($("deliveryStatus")) $("deliveryStatus").value = "Pending";
+        if ($("deliveryDate")) $("deliveryDate").value = todayKey();
         if ($("deliveryHistory")) {
             $("deliveryHistory").innerHTML = "";
             $("deliveryHistory").classList.add("hidden");
@@ -400,6 +566,7 @@ $("form")?.addEventListener("submit", event => {
         ...(existing || {}),
         id: existing?.id || generateId(),
         customer, phone, pickup, destination,
+        deliveryDate: $("deliveryDate")?.value || todayKey(),
         packageDescription: $("deliveryPackage")?.value.trim() || "",
         amount: Number($("deliveryAmount")?.value || 0),
         riderEarning: Number($("deliveryRiderEarning")?.value || 0),
@@ -481,6 +648,7 @@ function deliveryRow(d) {
            <button type="button" class="link" onclick="trackSpecificDelivery('${id}')">Track</button>`;
     return `<tr>
         <td>${id}</td>
+        <td>${escapeHTML(formatDay(entryDate(d)))}</td>
         <td>${escapeHTML(d.customer || "—")}</td>
         <td>${escapeHTML(d.pickup || "—")}</td>
         <td>${escapeHTML(d.destination || "—")}</td>
@@ -494,14 +662,14 @@ function renderDeliveries() {
     const term = ($("search")?.value || "").trim().toLowerCase();
     const filtered = visibleDeliveries().filter(d => {
         const okStatus = deliveryFilter === "All" || normaliseStatus(d.status) === deliveryFilter;
-        const text = [d.id, d.customer, d.phone, d.pickup, d.destination,
+        const text = [d.id, entryDate(d), formatDay(entryDate(d)), d.customer, d.phone, d.pickup, d.destination,
             deliveryRiderName(d), d.status].join(" ").toLowerCase();
         return okStatus && text.includes(term);
     });
     if ($("allRows"))
         $("allRows").innerHTML = filtered.length
             ? filtered.map(deliveryRow).join("")
-            : '<tr><td colspan="8">No deliveries found.</td></tr>';
+            : '<tr><td colspan="9">No deliveries found.</td></tr>';
 }
 window.setDeliveryFilter = function (status, button) {
     deliveryFilter = status;
@@ -523,6 +691,7 @@ function showTracking(delivery) {
     const history = Array.isArray(delivery.history) ? delivery.history : [];
     r.innerHTML = `
         <h2>Delivery ${escapeHTML(delivery.id)}</h2>
+        <p><strong>Delivery date:</strong> ${escapeHTML(formatDay(entryDate(delivery)))}</p>
         <p><strong>Customer:</strong> ${escapeHTML(delivery.customer || "—")}</p>
         <p><strong>Pickup:</strong> ${escapeHTML(delivery.pickup || "—")}</p>
         <p><strong>Destination:</strong> ${escapeHTML(delivery.destination || "—")}</p>
@@ -823,10 +992,10 @@ function renderRecent(deliveries) {
     const c = $("recent");
     if (!c) return;
     const recent = deliveries.slice()
-        .sort((a, b) => String(b.createdAt || "").localeCompare(String(a.createdAt || "")))
+        .sort((a, b) => (entryDate(b) + String(b.createdAt || "")).localeCompare(entryDate(a) + String(a.createdAt || "")))
         .slice(0, 7);
     c.innerHTML = recent.length ? recent.map(deliveryRow).join("")
-        : '<tr><td colspan="8">No deliveries recorded yet.</td></tr>';
+        : '<tr><td colspan="9">No deliveries recorded yet.</td></tr>';
 }
 
 /* ================= CHARTS ================= */
@@ -846,10 +1015,7 @@ function renderCharts() {
         date.setDate(date.getDate() - off);
         const key = todayKey(date);
         labels.push(date.toLocaleDateString("en-NG", { weekday: "short" }));
-        const onDay = deliveries.filter(d => {
-            const stamp = d.createdAt || d.updatedAt;
-            return stamp && todayKey(new Date(stamp)) === key;
-        });
+        const onDay = deliveries.filter(d => entryDate(d) === key);
         counts.push(onDay.length);
         revenue.push(onDay.reduce((s, d) => s + Number(d.amount || 0), 0));
     }
