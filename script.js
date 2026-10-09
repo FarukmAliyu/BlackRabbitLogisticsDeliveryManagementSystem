@@ -161,6 +161,10 @@
 if (window.BlackRabbitDashboardLoaded) return;
 window.BlackRabbitDashboardLoaded = true;
 
+window.addEventListener("error", ev => {
+    alert("Script error: " + ev.message + (ev.lineno ? " (line " + ev.lineno + ")" : ""));
+});
+
 /* ================= CONFIG ================= */
 const KEYS = {
     riders: "blackRabbitRiders",
@@ -453,7 +457,7 @@ function openApplication() {
 
     ["customersNav", "driversNav", "analyticsNav", "attendanceNav"]
         .forEach(id => setVisible($(id), isAdmin()));
-    document.querySelectorAll(".primary.new").forEach(b => setVisible(b, true));
+    document.querySelectorAll(".primary.new").forEach(b => { b.style.display = "inline-block"; b.disabled = false; });
     // Settings is admin-only too
     document.querySelectorAll('[data-page="settings"]').forEach(b => setVisible(b, isAdmin()));
 
@@ -532,15 +536,19 @@ function openDeliveryModal(delivery = null) {
         }
     }
     $("modal")?.classList.add("show");
+    if ($("modal")) $("modal").style.display = "flex";
     $("modal")?.classList.remove("hidden");
 }
 window.closeDeliveryModal = function () {
     $("modal")?.classList.remove("show");
     $("modal")?.classList.add("hidden");
+    if ($("modal")) $("modal").style.display = "none";
     editingDeliveryId = null;
 };
-document.querySelectorAll(".primary.new").forEach(b =>
-    b.addEventListener("click", () => openDeliveryModal()));
+document.addEventListener("click", e => {
+    if (e.target.closest(".primary.new")) openDeliveryModal();
+});
+window.openDeliveryModal = openDeliveryModal;
 $("close")?.addEventListener("click", window.closeDeliveryModal);
 
 function renderDeliveryHistory(delivery) {
