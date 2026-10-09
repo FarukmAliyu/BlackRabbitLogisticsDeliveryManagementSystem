@@ -1398,3 +1398,27 @@ td{
     }
 
 }
+
+/* FIX: Restore Rider and Super Admin tabs */
+.role-selector {
+    display: grid !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 8px;
+    width: 100%;
+    visibility: visible !important;
+    opacity: 1 !important;
+    height: auto !important;
+    overflow: visible !important;
+}
+
+.role-selector button,
+#riderRoleBtn,
+#adminRoleBtn {
+    display: block !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+}
+
+#adminRoleBtn {
+    position: static !important;
+}
