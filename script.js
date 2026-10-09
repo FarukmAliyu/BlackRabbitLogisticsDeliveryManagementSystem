@@ -301,6 +301,13 @@ function formatDay(key) {
     return new Date(+m[1], +m[2] - 1, +m[3])
         .toLocaleDateString("en-NG", { day: "numeric", month: "short", year: "numeric" });
 }
+/* Admin can edit anything; a rider can edit only entries they created, until delivered */
+function canEditDelivery(d) {
+    if (isAdmin()) return true;
+    return !!d && d.createdBy === currentRiderId() &&
+        deliveryRiderId(d) === currentRiderId() &&
+        normaliseStatus(d.status) !== "Delivered";
+}
 function isRiderApproved(r) {
     return r.active !== false && !["Disabled", "Pending Approval", "Pending", "Rejected"].includes(r.status);
 }
@@ -446,7 +453,7 @@ function openApplication() {
 
     ["customersNav", "driversNav", "analyticsNav", "attendanceNav"]
         .forEach(id => setVisible($(id), isAdmin()));
-    document.querySelectorAll(".primary.new").forEach(b => setVisible(b, isAdmin()));
+    document.querySelectorAll(".primary.new").forEach(b => setVisible(b, true));
     // Settings is admin-only too
     document.querySelectorAll('[data-page="settings"]').forEach(b => setVisible(b, isAdmin()));
 
@@ -487,10 +494,14 @@ function fillRiderOptions(selected = "") {
     }).join("");
 }
 function openDeliveryModal(delivery = null) {
-    if (!isAdmin()) return alert("Only an administrator can create or edit deliveries.");
+    if (delivery && !canEditDelivery(delivery)) return alert("You can only edit your own deliveries that are not yet delivered.");
     editingDeliveryId = delivery?.id || null;
     $("form")?.reset();
     fillRiderOptions(delivery ? deliveryRiderId(delivery) : "");
+    ["deliveryRider", "deliveryRiderEarning", "deliveryStatus"].forEach(fid => {
+        const group = $(fid)?.closest(".form-group");
+        if (group) group.style.display = isAdmin() ? "" : "none";
+    });
 
     if ($("deliveryEditId")) $("deliveryEditId").value = editingDeliveryId || "";
     setText("modalTitle", delivery ? "Edit Delivery" : "Create New Delivery");
@@ -545,7 +556,7 @@ function renderDeliveryHistory(delivery) {
 
 $("form")?.addEventListener("submit", event => {
     event.preventDefault();
-    if (!isAdmin()) return alert("Only an administrator can save delivery changes.");
+    
 
     const customer = $("deliveryCustomer")?.value.trim() || "";
     const phone = $("deliveryPhone")?.value.trim() || "";
@@ -557,8 +568,10 @@ $("form")?.addEventListener("submit", event => {
     const deliveries = getDeliveries();
     const now = new Date().toISOString();
     const existing = deliveries.find(d => String(d.id) === String(editingDeliveryId));
-    const assignedRider = $("deliveryRider")?.value || "";
-    let newStatus = normaliseStatus($("deliveryStatus")?.value);
+    if (editingDeliveryId && (!existing || !canEditDelivery(existing)))
+        return alert("You can only edit your own deliveries that are not yet delivered.");
+    const assignedRider = isAdmin() ? ($("deliveryRider")?.value || "") : currentRiderId();
+    let newStatus = isAdmin() ? normaliseStatus($("deliveryStatus")?.value) : (existing ? normaliseStatus(existing.status) : "Assigned");
     // Auto-promote Pending -> Assigned when a rider is chosen
     if (assignedRider && newStatus === "Pending") newStatus = "Assigned";
 
@@ -569,12 +582,13 @@ $("form")?.addEventListener("submit", event => {
         deliveryDate: $("deliveryDate")?.value || todayKey(),
         packageDescription: $("deliveryPackage")?.value.trim() || "",
         amount: Number($("deliveryAmount")?.value || 0),
-        riderEarning: Number($("deliveryRiderEarning")?.value || 0),
+        riderEarning: isAdmin() ? Number($("deliveryRiderEarning")?.value || 0) : Number(existing?.riderEarning || 0),
         riderId: assignedRider,
         riderName: deliveryRiderName({ riderId: assignedRider }),
         status: newStatus,
         notes: $("deliveryNotes")?.value.trim() || "",
         createdAt: existing?.createdAt || now,
+        createdBy: existing?.createdBy || (isAdmin() ? "admin" : currentRiderId()),
         updatedAt: now,
         history: Array.isArray(existing?.history) ? [...existing.history] : []
     };
@@ -645,6 +659,7 @@ function deliveryRow(d) {
         ? `<button type="button" class="link" onclick="editDelivery('${id}')">Edit</button>
            <button type="button" class="link" onclick="deleteDelivery('${id}')">Delete</button>`
         : `${advance}
+           ${canEditDelivery(d) ? `<button type="button" class="link" onclick="editDelivery('${id}')">Edit</button>` : ""}
            <button type="button" class="link" onclick="trackSpecificDelivery('${id}')">Track</button>`;
     return `<tr>
         <td>${id}</td>
