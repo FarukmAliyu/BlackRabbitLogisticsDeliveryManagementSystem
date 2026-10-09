@@ -1,10 +1,13 @@
 /* =========================================================
-BLACK RABBIT LOGISTICS — MAIN DASHBOARD SCRIPT
-Fixed authentication + existing dashboard functionality
+   BLACK RABBIT LOGISTICS — MAIN DASHBOARD SCRIPT
+   Fixed authentication + existing dashboard functionality
 ========================================================= */
 
 (() => {
-“use strict”;
+    "use strict";
+
+    if (window.BlackRabbitDashboardLoaded) return;
+    window.BlackRabbitDashboardLoaded = true;
 
 if (window.BlackRabbitDashboardLoaded) return;
 window.BlackRabbitDashboardLoaded = true;
